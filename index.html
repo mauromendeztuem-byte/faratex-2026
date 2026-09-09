@@ -1366,20 +1366,23 @@
                     .reduce((sum, v) => sum + v.total, 0);
             }
             if (tipo === 'cheques') {
-                // Cheques Cobrados o Descontados directamente desde la pestaña Cheques,
-                // contados en el mes en que se cobraron/descontaron (importe del cheque).
-                const ingCheques = cheques
-                    .filter(c => (c.estado === 'Descontado' || c.estado === 'Cobrado') && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
+                // Cheques Cobrados directamente (sin descuento): ingresa el importe
+                // completo del cheque, contado en el mes en que se cobraron.
+                const ingCobrados = cheques
+                    .filter(c => c.estado === 'Cobrado' && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
                     .reduce((sum, c) => sum + c.importe, 0);
 
-                // Cheques descontados registrados en la pestaña Descuentos: se cuenta
-                // el NETO (lo que realmente ingresa después del costo del descuento),
-                // contado en el mes de la Fecha Descuento.
+                // Cheques Descontados: NO ingresa el importe del cheque (eso nunca
+                // llega a la cuenta) — ingresa el NETO real, registrado en la pestaña
+                // Descuentos, contado en el mes de la Fecha Descuento. Marcar un
+                // cheque como "Descontado" en la pestaña Cheques solo lo saca de
+                // Cartera; para que sume en Ingresos hay que cargar también el
+                // descuento (o el lote de descuentos) en la pestaña Descuentos.
                 const ingDescuentos = descuentos
                     .filter(d => d.fechaDesc && obtenerIndiceMesDeFecha(d.fechaDesc) === indiceMesActual && calcularSemana(new Date(d.fechaDesc).getDate()) === semana)
                     .reduce((sum, d) => sum + d.neto, 0);
 
-                return ingCheques + ingDescuentos;
+                return ingCobrados + ingDescuentos;
             }
             return 0;
         }
