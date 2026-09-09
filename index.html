@@ -868,6 +868,16 @@
             return new Intl.NumberFormat('es-AR').format(Math.round(n));
         }
 
+        function formatFecha(fechaStr) {
+            if (!fechaStr) return '-';
+            const partes = fechaStr.split('-');
+            if (partes.length === 3) {
+                const [anio, mes, dia] = partes;
+                return `${dia}/${mes}/${anio}`;
+            }
+            return fechaStr;
+        }
+
         function calcularSemana(dia) {
             if (dia <= 4) return 's1';
             if (dia <= 11) return 's2';
@@ -998,7 +1008,7 @@
             const tbody = document.getElementById('tbody-ventas');
             tbody.innerHTML = ventas.map(v => `
                 <tr>
-                    <td>${v.fecha}</td>
+                    <td>${formatFecha(v.fecha)}</td>
                     <td>${v.cliente}</td>
                     <td>${v.remito}</td>
                     <td>${v.servicio}</td>
@@ -1055,7 +1065,7 @@
             const tbody = document.getElementById('tbody-gastos');
             tbody.innerHTML = gastos.map(g => `
                 <tr>
-                    <td>${g.fecha}</td>
+                    <td>${formatFecha(g.fecha)}</td>
                     <td>${g.desc}</td>
                     <td>${categorias[g.cat]}</td>
                     <td class="text-right">$${formatNum(g.importe)}</td>
@@ -1158,18 +1168,26 @@
         function mostrarCheques() {
             const tbody = document.getElementById('tbody-cheques');
             const mesActualNum = obtenerNumeroMesActual();
-            const chequesFiltrados = cheques.filter(c => obtenerMesDeFecha(c.fecha) === mesActualNum);
-            
+            const chequesFiltrados = cheques.filter(c => {
+                const mesFecha = obtenerMesDeFecha(c.fecha);
+                if (c.estado === 'Cartera') {
+                    // Un cheque en cartera sigue pendiente: se muestra en su mes de
+                    // origen y en todos los meses siguientes hasta que cambie de estado.
+                    return mesFecha <= mesActualNum;
+                }
+                return mesFecha === mesActualNum;
+            });
+
             tbody.innerHTML = chequesFiltrados.map(c => `
                 <tr>
-                    <td>${c.fecha}</td>
+                    <td>${formatFecha(c.fecha)}</td>
                     <td>${c.cliente}</td>
                     <td>${c.nro}</td>
-                    <td>${c.vencimiento}</td>
+                    <td>${formatFecha(c.vencimiento)}</td>
                     <td class="text-right">$${formatNum(c.importe)}</td>
                     <td><span style="background: ${c.estado === 'Cartera' ? '#dcfce7' : c.estado === 'Descontado' ? '#fef3c7' : c.estado === 'Cobrado' ? '#dbeafe' : '#e9d5ff'}; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${c.estado}</span></td>
                     <td>${c.proveedor || '-'}</td>
-                    <td>${c.fechaCobrado || '-'}</td>
+                    <td>${formatFecha(c.fechaCobrado)}</td>
                     <td><button class="btn-small" onclick="editarCheque(${c.id})" style="background:#9333ea;">✏️</button> <button class="btn-danger btn-small" onclick="eliminarCheque(${c.id})">✕</button></td>
                 </tr>
             `).join('');
@@ -1223,7 +1241,7 @@
             const tbody = document.getElementById('tbody-ventausd');
             tbody.innerHTML = ventasUSD.map(v => `
                 <tr>
-                    <td>${v.fecha}</td>
+                    <td>${formatFecha(v.fecha)}</td>
                     <td><span style="background: ${v.tipo === 'Compra' ? '#d1fae5' : '#fecaca'}; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${v.tipo}</span></td>
                     <td class="text-right">${formatNum(v.cantidad)}</td>
                     <td class="text-right">${formatNum(v.tipoCambio)}</td>
@@ -1276,8 +1294,8 @@
                 return `
                     <tr>
                         <td>${d.nro}</td>
-                        <td>${d.fechaCheque}</td>
-                        <td>${d.fechaDesc}</td>
+                        <td>${formatFecha(d.fechaCheque)}</td>
+                        <td>${formatFecha(d.fechaDesc)}</td>
                         <td class="text-right">$${formatNum(d.original)}</td>
                         <td class="text-right">$${formatNum(d.neto)}</td>
                         <td class="text-right">$${formatNum(costo)}</td>
