@@ -1366,10 +1366,20 @@
                     .reduce((sum, v) => sum + v.total, 0);
             }
             if (tipo === 'cheques') {
-                // Cheques Descontados + Cobrados, contados en el mes en que se cobraron/descontaron
-                return cheques
+                // Cheques Cobrados o Descontados directamente desde la pestaña Cheques,
+                // contados en el mes en que se cobraron/descontaron (importe del cheque).
+                const ingCheques = cheques
                     .filter(c => (c.estado === 'Descontado' || c.estado === 'Cobrado') && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
                     .reduce((sum, c) => sum + c.importe, 0);
+
+                // Cheques descontados registrados en la pestaña Descuentos: se cuenta
+                // el NETO (lo que realmente ingresa después del costo del descuento),
+                // contado en el mes de la Fecha Descuento.
+                const ingDescuentos = descuentos
+                    .filter(d => d.fechaDesc && obtenerIndiceMesDeFecha(d.fechaDesc) === indiceMesActual && calcularSemana(new Date(d.fechaDesc).getDate()) === semana)
+                    .reduce((sum, d) => sum + d.neto, 0);
+
+                return ingCheques + ingDescuentos;
             }
             return 0;
         }
