@@ -264,7 +264,7 @@
                         <option value="alarma">Alarma</option>
                         <option value="seguroAuto">Seguro Auto</option>
                         <option value="contador">Contador (Mauro)</option>
-                        <option value="autonomos">Autónomos</option>
+                        <option value="arca">ARCA</option>
                         <option value="plan1">Plan de Pagos 1</option>
                         <option value="plan2">Plan de Pagos 2</option>
                         <option value="plan3">Plan de Pagos 3</option>
@@ -399,7 +399,7 @@
                         <th class="text-right">Original</th>
                         <th class="text-right">Neto</th>
                         <th class="text-right">Costo $</th>
-                        <th class="text-right">Costo %</th>
+                        <th class="text-right" title="Costo del descuento como % del Neto que realmente recibiste (no del valor del cheque)">Costo % (s/Neto)</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -640,7 +640,7 @@
             alarma: 'Alarma',
             seguroAuto: 'Seguro Auto',
             contador: 'Contador (Mauro)',
-            autonomos: 'Autónomos',
+            arca: 'ARCA',
             plan1: 'Plan de Pagos 1',
             plan2: 'Plan de Pagos 2',
             plan3: 'Plan de Pagos 3',
@@ -653,7 +653,7 @@
             otros: 'Otros'
         };
 
-        const gastosFijos = ['alquiler', 'luz', 'gas', 'agua', 'camioneta', 'corporacion', 'tarjeta', 'alarma', 'seguroAuto', 'contador', 'autonomos', 'plan1', 'plan2', 'plan3'];
+        const gastosFijos = ['alquiler', 'luz', 'gas', 'agua', 'camioneta', 'corporacion', 'tarjeta', 'alarma', 'seguroAuto', 'contador', 'arca', 'plan1', 'plan2', 'plan3'];
         const gastosVariables = ['sueldos', 'retiroRuben', 'retiroGianina', 'comida', 'ferreteria', 'mantenimiento', 'otros'];
 
         const valoresProyectados = {
@@ -667,7 +667,7 @@
             alarma: { s1: 0, s2: 60000, s3: 0, s4: 0, s5: 0 },
             seguroAuto: { s1: 0, s2: 400000, s3: 0, s4: 0, s5: 0 },
             contador: { s1: 0, s2: 0, s3: 350000, s4: 0, s5: 0 },
-            autonomos: { s1: 105000, s2: 0, s3: 0, s4: 0, s5: 0 },
+            arca: { s1: 105000, s2: 0, s3: 0, s4: 0, s5: 0 },
             plan1: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
             plan2: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
             plan3: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
@@ -1329,7 +1329,9 @@
             const tbody = document.getElementById('tbody-descuentos');
             tbody.innerHTML = descuentos.map(d => {
                 const costo = d.original - d.neto;
-                const costoPct = ((costo / d.original) * 100).toFixed(2);
+                // % sobre el NETO (lo que realmente te presta/adelanta Mariano), no
+                // sobre el valor nominal del cheque — así refleja el costo real de esa plata.
+                const costoPct = ((costo / d.neto) * 100).toFixed(2);
                 return `
                     <tr>
                         <td>${d.nro}</td>
