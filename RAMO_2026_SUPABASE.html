@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAMO 2026 - Gestión Integral</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .sync-badge { position: fixed; top: 12px; right: 12px; z-index: 9999; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background: #64748b; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: background 0.3s; }
+        .sync-badge.ok { background: #16a34a; }
+        .sync-badge.error { background: #dc2626; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #fff; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1800px; margin: 0 auto; }
+        header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-left h1 { font-size: 2.2rem; margin-bottom: 10px; }
+        .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .mes-selector { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 4px; color: white; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .mes-selector:hover { background: rgba(255,255,255,0.15); }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; overflow-x: auto; flex-wrap: wrap; }
+        .tab-btn { padding: 12px 20px; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: bold; white-space: nowrap; transition: all 0.2s; }
+        .tab-btn:hover { background: rgba(255,255,255,0.15); }
+        .tab-btn.active { background: #3b82f6; box-shadow: 0 0 15px rgba(59,130,246,0.5); }
+        .card { background: white; color: #1e293b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 25px; display: none; overflow-x: auto; }
+        .card.active { display: block; }
+        h2 { font-size: 1.4rem; margin: 20px 0 15px 0; color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+        h3 { font-size: 1.1rem; margin: 15px 0 10px 0; color: #1e293b; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .dashboard-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; color: white; }
+        .dashboard-card.green { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); color: #1e293b; }
+        .dashboard-card.red { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #1e293b; }
+        .dashboard-card.blue { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .dashboard-label { font-size: 12px; opacity: 0.9; }
+        .dashboard-value { font-size: 1.8rem; font-weight: bold; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th { background: #1e293b; color: white; padding: 10px; text-align: left; font-weight: bold; position: sticky; top: 0; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+        tbody tr:hover { background: #f8fafc; }
+        input, select, textarea { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-family: inherit; }
+        input[type="number"], input[type="date"] { width: 130px; }
+        input[type="text"], select { width: 160px; }
+        textarea { width: 200px; height: 50px; resize: vertical; }
+        button { padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        button:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-small { padding: 4px 8px; font-size: 11px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 4px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 11px; font-weight: bold; color: #1e293b; }
+        .bg-green { background: #dcfce7; }
+        .bg-blue { background: #dbeafe; }
+        .bg-purple { background: #e9d5ff; }
+        .bg-yellow { background: #fef3c7; }
+        .bg-total { background: #f1f5f9; font-weight: bold; }
+        .proyectado { background: #fef3c7; }
+        .real { background: #d1fae5; }
+        .diferencia { background: #fecaca; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .col-narrow { width: 70px; }
+        .col-medium { width: 110px; }
+        .resumen-totales { background: #1e293b; color: white; padding: 15px; border-radius: 4px; margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .resumen-item { padding: 10px; border-left: 3px solid #3b82f6; }
+        .resumen-label { font-size: 12px; opacity: 0.8; }
+        .resumen-valor { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div id="sync-badge" class="sync-badge">Conectando...</div>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>RAMO 2026 - Gestión Integral</h1>
+                <p style="opacity: 0.8;">Dashboard de ventas, gastos y cash flow</p>
+            </div>
+            <div class="header-right">
+                <label style="font-size: 12px; opacity: 0.8;">Mes Actual:</label>
+                <select id="mes-selector" class="mes-selector" onchange="cambiarMes(this.value)">
+                    <option value="Septiembre">Septiembre 2026</option>
+                    <option value="Octubre">Octubre 2026</option>
+                    <option value="Noviembre">Noviembre 2026</option>
+                    <option value="Diciembre">Diciembre 2026</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- PESTAÑAS -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="mostrarPestana('dashboard')">Dashboard</button>
+            <button class="tab-btn" onclick="mostrarPestana('ventas')">Ventas</button>
+            <button class="tab-btn" onclick="mostrarPestana('gastos')">Gastos</button>
+            <button class="tab-btn" onclick="mostrarPestana('cheques')">Cheques</button>
+            <button class="tab-btn" onclick="mostrarPestana('descuentos')">Descuentos</button>
+            <button class="tab-btn" onclick="mostrarPestana('ventausd')">USD → ARS</button>
+            <button class="tab-btn" onclick="mostrarPestana('cashflow')">Cash Flow</button>
+        </div>
+
+        <!-- ======== DASHBOARD ======== -->
+        <div class="card active" id="pestana-dashboard">
+            <h2>Resumen del Mes</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card green">
+                    <div class="dashboard-label">TOTAL VENTAS</div>
+                    <div class="dashboard-value" id="dash-ventas">$0</div>
+                </div>
+                <div class="dashboard-card red">
+                    <div class="dashboard-label">TOTAL GASTOS</div>
+                    <div class="dashboard-value" id="dash-gastos">$0</div>
+                </div>
+                <div class="dashboard-card blue">
+                    <div class="dashboard-label">SALDO NETO</div>
+                    <div class="dashboard-value" id="dash-saldo">$0</div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="dashboard-label">CARTERA CHEQUES</div>
+                    <div class="dashboard-value" id="dash-cartera">$0</div>
+                </div>
+            </div>
+
+            <h2>Top Clientes</h2>
+            <table id="tabla-top-clientes">
+                <thead>
+                    <tr><th>Cliente</th><th class="text-right">Total</th><th class="text-right">%</th></tr>
+                </thead>
+                <tbody id="tbody-top-clientes"></tbody>
+            </table>
+
+            <h2>Gastos por Categoría</h2>
+            <table id="tabla-gastos-categoria">
+                <thead>
+                    <tr><th>Categoría</th><th class="text-right">Total</th><th class="text-right">%</th></tr>
+                </thead>
+                <tbody id="tbody-gastos-categoria"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== VENTAS ======== -->
+        <div class="card" id="pestana-ventas">
+            <h2>Registrar Venta</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="venta-fecha" />
+                </div>
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <input type="text" id="venta-cliente" placeholder="Nombre cliente" />
+                </div>
+                <div class="form-group">
+                    <label>Nro Remito</label>
+                    <input type="text" id="venta-remito" placeholder="#" />
+                </div>
+                <div class="form-group">
+                    <label>Servicio/Producto</label>
+                    <select id="venta-servicio">
+                        <option value="">Seleccionar</option>
+                        <option value="Fason">Fason</option>
+                        <option value="Fason+Tintorería">Fason+Tintorería</option>
+                        <option value="Tintorería">Tintorería</option>
+                        <option value="Malla Blanca">Malla Blanca</option>
+                        <option value="Malla Cruda">Malla Cruda</option>
+                        <option value="Rollos Blancos">Rollos Blancos</option>
+                        <option value="Piezas">Piezas</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Kilos</label>
+                    <input type="number" id="venta-kilos" placeholder="0" onchange="calcularImporte()" />
+                </div>
+                <div class="form-group">
+                    <label>Precio x Kilo</label>
+                    <input type="number" id="venta-precio-kilo" placeholder="$" onchange="calcularImporte()" />
+                </div>
+                <div class="form-group">
+                    <label>Importe (automático)</label>
+                    <input type="number" id="venta-importe" placeholder="$" readonly style="background: #f0f0f0;" />
+                </div>
+                <div class="form-group">
+                    <label>Método Cobro</label>
+                    <select id="venta-metodo">
+                        <option value="Cheque">Cheque</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nro Factura</label>
+                    <input type="text" id="venta-factura" placeholder="#" />
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                        <input type="checkbox" id="venta-facturado" />
+                        <span>Facturado</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                        <input type="checkbox" id="venta-cobrado" />
+                        <span>Cobrado</span>
+                    </label>
+                </div>
+            </div>
+            <button onclick="agregarVenta()" style="margin-top: 15px;">Agregar Venta</button>
+
+            <h2 style="margin-top: 30px;">Ventas Registradas</h2>
+            <table id="tabla-ventas">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Remito</th>
+                        <th>Servicio</th>
+                        <th class="col-narrow">Kilos</th>
+                        <th class="text-right">P.x Kilo</th>
+                        <th class="text-right">Importe</th>
+                        <th>Método</th>
+                        <th>Factura</th>
+                        <th class="text-center">Fact.</th>
+                        <th class="text-center">Cobrado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-ventas"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== GASTOS ======== -->
+        <div class="card" id="pestana-gastos">
+            <h2>Registrar Gasto</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="gasto-fecha" />
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="gasto-desc" placeholder="Descripción" />
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="gasto-cat">
+                        <option value="">Seleccionar</option>
+                        <option value="alquiler">Alquiler</option>
+                        <option value="luz">Luz (EDENOR)</option>
+                        <option value="gas">Gas (NATURGY)</option>
+                        <option value="agua">Agua (AYSA)</option>
+                        <option value="camioneta">Camioneta</option>
+                        <option value="corporacion">Corporación Médica</option>
+                        <option value="tarjeta">Tarjeta Crédito</option>
+                        <option value="alarma">Alarma</option>
+                        <option value="seguroAuto">Seguro Auto</option>
+                        <option value="contador">Contador (Mauro)</option>
+                        <option value="autonomos">Autónomos</option>
+                        <option value="plan1">Plan de Pagos 1</option>
+                        <option value="plan2">Plan de Pagos 2</option>
+                        <option value="plan3">Plan de Pagos 3</option>
+                        <option value="sueldos">Sueldos</option>
+                        <option value="retiroRuben">Retiro Rubén</option>
+                        <option value="retiroGianina">Retiro Gianina</option>
+                        <option value="comida">Comida</option>
+                        <option value="ferreteria">Ferretería</option>
+                        <option value="mantenimiento">Mantenimiento</option>
+                        <option value="otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Importe</label>
+                    <input type="number" id="gasto-importe" placeholder="$" />
+                </div>
+            </div>
+            <button onclick="agregarGasto()" style="margin-top: 15px;">Agregar Gasto</button>
+
+            <h2 style="margin-top: 30px;">Gastos Registrados</h2>
+            <table id="tabla-gastos">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Categoría</th>
+                        <th class="text-right">Importe</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-gastos"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== CHEQUES ======== -->
+        <div class="card" id="pestana-cheques">
+            <h2>Registrar Cheque</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="cheque-fecha" />
+                </div>
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <input type="text" id="cheque-cliente" placeholder="Nombre" />
+                </div>
+                <div class="form-group">
+                    <label>Nro Cheque</label>
+                    <input type="text" id="cheque-nro" placeholder="#" />
+                </div>
+                <div class="form-group">
+                    <label>Vencimiento</label>
+                    <input type="date" id="cheque-vencimiento" />
+                </div>
+                <div class="form-group">
+                    <label>Importe</label>
+                    <input type="number" id="cheque-importe" placeholder="$" />
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select id="cheque-estado" onchange="mostrarProveedorSiNecesario()">
+                        <option value="Cartera">Cartera</option>
+                        <option value="Descontado">Descontado</option>
+                        <option value="Cobrado">Cobrado</option>
+                        <option value="Proveedor">Proveedor</option>
+                    </select>
+                </div>
+                <div class="form-group" id="grupo-proveedor" style="display:none;">
+                    <label>Proveedor</label>
+                    <input type="text" id="cheque-proveedor" placeholder="Nombre proveedor" />
+                </div>
+                <div class="form-group">
+                    <label>Fecha Cobrado</label>
+                    <input type="date" id="cheque-fecha-cobrado" />
+                </div>
+            </div>
+            <button onclick="agregarCheque()" style="margin-top: 15px;">Agregar Cheque</button>
+
+            <h2 style="margin-top: 30px;">Cartera de Cheques</h2>
+            <table id="tabla-cheques">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Nro Cheque</th>
+                        <th>Vencimiento</th>
+                        <th class="text-right">Importe</th>
+                        <th>Estado</th>
+                        <th>Proveedor</th>
+                        <th>F. Cobrado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-cheques"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== DESCUENTOS ======== -->
+        <div class="card" id="pestana-descuentos">
+            <h2>Registrar Descuento</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nro Cheque</label>
+                    <input type="text" id="desc-nro" placeholder="#" />
+                </div>
+                <div class="form-group">
+                    <label>Fecha Cheque</label>
+                    <input type="date" id="desc-fecha-cheque" />
+                </div>
+                <div class="form-group">
+                    <label>Fecha Descuento</label>
+                    <input type="date" id="desc-fecha-desc" />
+                </div>
+                <div class="form-group">
+                    <label>Monto Original</label>
+                    <input type="number" id="desc-original" placeholder="$" />
+                </div>
+                <div class="form-group">
+                    <label>Monto Neto</label>
+                    <input type="number" id="desc-neto" placeholder="$" />
+                </div>
+            </div>
+            <button onclick="agregarDescuento()" style="margin-top: 15px;">Agregar Descuento</button>
+
+            <h2 style="margin-top: 30px;">Descuentos Registrados</h2>
+            <table id="tabla-descuentos">
+                <thead>
+                    <tr>
+                        <th>Nro Cheque</th>
+                        <th>Fecha Cheque</th>
+                        <th>Fecha Descuento</th>
+                        <th class="text-right">Original</th>
+                        <th class="text-right">Neto</th>
+                        <th class="text-right">Costo $</th>
+                        <th class="text-right">Costo %</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-descuentos"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== USD COMPRA/VENTA ======== -->
+        <div class="card" id="pestana-ventausd">
+            <h2>Compra/Venta de USD</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="usd-fecha" />
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select id="usd-tipo">
+                        <option value="Compra">Compra USD (↑ saldo)</option>
+                        <option value="Venta">Venta USD → ARS (↓ saldo)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad USD</label>
+                    <input type="number" id="usd-cantidad" placeholder="0" onchange="calcularTotalUSD()" />
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Cambio</label>
+                    <input type="number" id="usd-tipocambio" placeholder="1200" onchange="calcularTotalUSD()" />
+                </div>
+                <div class="form-group">
+                    <label>Total ARS</label>
+                    <input type="number" id="usd-total" placeholder="$" readonly style="background: #f0f0f0;" />
+                </div>
+            </div>
+            <button onclick="agregarMovimientoUSD()" style="margin-top: 15px;">➕ Registrar Movimiento</button>
+
+            <h2 style="margin-top: 30px;">Movimientos de USD</h2>
+            <table id="tabla-ventausd">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th class="text-right">USD</th>
+                        <th class="text-right">Tipo Cambio</th>
+                        <th class="text-right">Total ARS</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-ventausd"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== CASH FLOW ======== -->
+        <div class="card" id="pestana-cashflow">
+            <div class="dashboard-grid" style="margin-bottom: 30px;">
+                <div class="dashboard-card green">
+                    <div class="dashboard-label">INGRESOS (Mes)</div>
+                    <div class="dashboard-value" id="cf-ingresos">$0</div>
+                </div>
+                <div class="dashboard-card red">
+                    <div class="dashboard-label">GASTOS REALES (Mes)</div>
+                    <div class="dashboard-value" id="cf-gastos">$0</div>
+                </div>
+                <div class="dashboard-card blue">
+                    <div class="dashboard-label">SALDO DE CAJA</div>
+                    <div class="dashboard-value" id="cf-saldo">$0</div>
+                </div>
+            </div>
+
+            <h2>Proyectado Cheques a Cobrar (Por Vencimiento)</h2>
+            <div class="dashboard-grid" style="margin-bottom: 30px;" id="grid-cheques-proyectado"></div>
+
+            <h2>Saldos Iniciales por Semana</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SEMANA</th>
+                        <th class="text-right">Saldo ARS</th>
+                        <th class="text-right">Saldo USD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-green">
+                        <td><strong>S1 (1-4)</strong></td>
+                        <td class="text-right"><input type="number" id="saldo_ars_s1" value="2527000" style="width: 120px;" onchange="actualizarCards(); guardarConfig();" /></td>
+                        <td class="text-right"><input type="number" id="saldo_usd_s1" value="25000" style="width: 120px;" onchange="actualizarCards(); guardarConfig();" /></td>
+                    </tr>
+                    <tr class="bg-blue">
+                        <td><strong>S2 (7-11)</strong></td>
+                        <td class="text-right">$<span id="saldo_ars_s2">0</span></td>
+                        <td class="text-right">$<span id="saldo_usd_s2">0</span></td>
+                    </tr>
+                    <tr class="bg-purple">
+                        <td><strong>S3 (14-18)</strong></td>
+                        <td class="text-right">$<span id="saldo_ars_s3">0</span></td>
+                        <td class="text-right">$<span id="saldo_usd_s3">0</span></td>
+                    </tr>
+                    <tr class="bg-yellow">
+                        <td><strong>S4 (21-25)</strong></td>
+                        <td class="text-right">$<span id="saldo_ars_s4">0</span></td>
+                        <td class="text-right">$<span id="saldo_usd_s4">0</span></td>
+                    </tr>
+                    <tr class="bg-green">
+                        <td><strong>S5 (28-30)</strong></td>
+                        <td class="text-right">$<span id="saldo_ars_s5">0</span></td>
+                        <td class="text-right">$<span id="saldo_usd_s5">0</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Ingresos por Semana</h2>
+            <table id="tabla-ingresos-semana">
+                <thead>
+                    <tr>
+                        <th>CONCEPTO</th>
+                        <th class="text-right">S1 (1-4)</th>
+                        <th class="text-right">S2 (7-11)</th>
+                        <th class="text-right">S3 (14-18)</th>
+                        <th class="text-right">S4 (21-25)</th>
+                        <th class="text-right">S5 (28-30)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-green">
+                        <td><strong>Ventas Efectivo/Transfer COBRADAS</strong></td>
+                        <td class="text-right">$<span id="ing-ventas-s1">0</span></td>
+                        <td class="text-right">$<span id="ing-ventas-s2">0</span></td>
+                        <td class="text-right">$<span id="ing-ventas-s3">0</span></td>
+                        <td class="text-right">$<span id="ing-ventas-s4">0</span></td>
+                        <td class="text-right">$<span id="ing-ventas-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-blue">
+                        <td><strong>Venta USD → ARS</strong></td>
+                        <td class="text-right">$<span id="ing-usd-s1">0</span></td>
+                        <td class="text-right">$<span id="ing-usd-s2">0</span></td>
+                        <td class="text-right">$<span id="ing-usd-s3">0</span></td>
+                        <td class="text-right">$<span id="ing-usd-s4">0</span></td>
+                        <td class="text-right">$<span id="ing-usd-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-purple">
+                        <td><strong>Cheques Descontados</strong></td>
+                        <td class="text-right">$<span id="ing-cheq-s1">0</span></td>
+                        <td class="text-right">$<span id="ing-cheq-s2">0</span></td>
+                        <td class="text-right">$<span id="ing-cheq-s3">0</span></td>
+                        <td class="text-right">$<span id="ing-cheq-s4">0</span></td>
+                        <td class="text-right">$<span id="ing-cheq-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-total">
+                        <td><strong>TOTAL INGRESOS</strong></td>
+                        <td class="text-right">$<span id="ing-total-s1">0</span></td>
+                        <td class="text-right">$<span id="ing-total-s2">0</span></td>
+                        <td class="text-right">$<span id="ing-total-s3">0</span></td>
+                        <td class="text-right">$<span id="ing-total-s4">0</span></td>
+                        <td class="text-right">$<span id="ing-total-s5">0</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Gastos Fijos - Proyectado vs Real vs Diferencia</h2>
+            <div style="overflow-x: auto;">
+                <table id="tabla-fijos"></table>
+            </div>
+
+            <h2>Gastos Variables - Proyectado vs Real vs Diferencia</h2>
+            <div style="overflow-x: auto;">
+                <table id="tabla-variables"></table>
+            </div>
+
+            <h2>Flujo de Caja por Semana</h2>
+            <table id="tabla-flujo-caja">
+                <thead>
+                    <tr>
+                        <th>CONCEPTO</th>
+                        <th class="text-right">S1 (1-4)</th>
+                        <th class="text-right">S2 (7-11)</th>
+                        <th class="text-right">S3 (14-18)</th>
+                        <th class="text-right">S4 (21-25)</th>
+                        <th class="text-right">S5 (28-30)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-green">
+                        <td><strong>Saldo Inicial</strong></td>
+                        <td class="text-right">$<span id="fc-saldo-ini-s1">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-ini-s2">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-ini-s3">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-ini-s4">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-ini-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-blue">
+                        <td><strong>+ Ingresos</strong></td>
+                        <td class="text-right">$<span id="fc-ingresos-s1">0</span></td>
+                        <td class="text-right">$<span id="fc-ingresos-s2">0</span></td>
+                        <td class="text-right">$<span id="fc-ingresos-s3">0</span></td>
+                        <td class="text-right">$<span id="fc-ingresos-s4">0</span></td>
+                        <td class="text-right">$<span id="fc-ingresos-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-purple">
+                        <td><strong>- Gastos</strong></td>
+                        <td class="text-right">$<span id="fc-gastos-s1">0</span></td>
+                        <td class="text-right">$<span id="fc-gastos-s2">0</span></td>
+                        <td class="text-right">$<span id="fc-gastos-s3">0</span></td>
+                        <td class="text-right">$<span id="fc-gastos-s4">0</span></td>
+                        <td class="text-right">$<span id="fc-gastos-s5">0</span></td>
+                    </tr>
+                    <tr class="bg-total">
+                        <td><strong>= Saldo Final</strong></td>
+                        <td class="text-right">$<span id="fc-saldo-fin-s1">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-fin-s2">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-fin-s3">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-fin-s4">0</span></td>
+                        <td class="text-right">$<span id="fc-saldo-fin-s5">0</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+        // ========== DATOS ==========
+        let mesActual = 'Septiembre';
+        let ventas = [];
+        let gastos = [];
+        let cheques = [];
+        let descuentos = [];
+        let ventasUSD = [];
+
+        const categorias = {
+            alquiler: 'Alquiler',
+            luz: 'Luz (EDENOR)',
+            gas: 'Gas (NATURGY)',
+            agua: 'Agua (AYSA)',
+            camioneta: 'Camioneta',
+            corporacion: 'Corporación Médica',
+            tarjeta: 'Tarjeta Crédito',
+            alarma: 'Alarma',
+            seguroAuto: 'Seguro Auto',
+            contador: 'Contador (Mauro)',
+            autonomos: 'Autónomos',
+            plan1: 'Plan de Pagos 1',
+            plan2: 'Plan de Pagos 2',
+            plan3: 'Plan de Pagos 3',
+            sueldos: 'Sueldos',
+            retiroRuben: 'Retiro Rubén',
+            retiroGianina: 'Retiro Gianina',
+            comida: 'Comida',
+            ferreteria: 'Ferretería',
+            mantenimiento: 'Mantenimiento',
+            otros: 'Otros'
+        };
+
+        const gastosFijos = ['alquiler', 'luz', 'gas', 'agua', 'camioneta', 'corporacion', 'tarjeta', 'alarma', 'seguroAuto', 'contador', 'autonomos', 'plan1', 'plan2', 'plan3'];
+        const gastosVariables = ['sueldos', 'retiroRuben', 'retiroGianina', 'comida', 'ferreteria', 'mantenimiento', 'otros'];
+
+        const valoresProyectados = {
+            alquiler: { s1: 0, s2: 5000000, s3: 0, s4: 0, s5: 0 },
+            luz: { s1: 0, s2: 6000000, s3: 0, s4: 0, s5: 0 },
+            gas: { s1: 3500000, s2: 0, s3: 0, s4: 0, s5: 0 },
+            agua: { s1: 170000, s2: 0, s3: 0, s4: 0, s5: 0 },
+            camioneta: { s1: 0, s2: 800000, s3: 0, s4: 0, s5: 0 },
+            corporacion: { s1: 0, s2: 0, s3: 480000, s4: 0, s5: 0 },
+            tarjeta: { s1: 0, s2: 1500000, s3: 0, s4: 0, s5: 0 },
+            alarma: { s1: 0, s2: 60000, s3: 0, s4: 0, s5: 0 },
+            seguroAuto: { s1: 0, s2: 400000, s3: 0, s4: 0, s5: 0 },
+            contador: { s1: 0, s2: 0, s3: 350000, s4: 0, s5: 0 },
+            autonomos: { s1: 105000, s2: 0, s3: 0, s4: 0, s5: 0 },
+            plan1: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
+            plan2: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
+            plan3: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
+            sueldos: { s1: 4100000, s2: 4100000, s3: 4100000, s4: 4100000, s5: 0 },
+            retiroRuben: { s1: 1300000, s2: 1300000, s3: 1300000, s4: 1300000, s5: 0 },
+            retiroGianina: { s1: 250000, s2: 250000, s3: 250000, s4: 250000, s5: 0 },
+            comida: { s1: 200000, s2: 200000, s3: 200000, s4: 200000, s5: 0 },
+            ferreteria: { s1: 50000, s2: 50000, s3: 50000, s4: 50000, s5: 0 },
+            mantenimiento: { s1: 50000, s2: 50000, s3: 50000, s4: 50000, s5: 0 },
+            otros: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 }
+        };
+
+        // ========== SUPABASE ==========
+        const SUPABASE_URL = 'https://yjpthmhrewhjvvurpxvr.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_Sxq4oJ8BffUnJxrKmkWddQ_j_4JJhnh';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function marcarBadge(estado, texto) {
+            const badge = document.getElementById('sync-badge');
+            if (!badge) return;
+            badge.classList.remove('ok', 'error');
+            if (estado) badge.classList.add(estado);
+            badge.textContent = texto;
+        }
+
+        // ----- Mapeo JS <-> columnas Supabase -----
+        function ventaToDb(v) {
+            return { id: v.id, fecha: v.fecha, cliente: v.cliente, remito: v.remito, servicio: v.servicio, kilos: v.kilos, precio_kilo: v.precioKilo, importe: v.importe, metodo: v.metodo, factura: v.factura, facturado: v.facturado, cobrado: v.cobrado };
+        }
+        function ventaFromDb(r) {
+            return { id: r.id, fecha: r.fecha, cliente: r.cliente, remito: r.remito, servicio: r.servicio, kilos: r.kilos, precioKilo: r.precio_kilo, importe: r.importe, metodo: r.metodo, factura: r.factura, facturado: r.facturado, cobrado: r.cobrado };
+        }
+        function gastoToDb(g) {
+            return { id: g.id, fecha: g.fecha, descripcion: g.desc, categoria: g.cat, importe: g.importe };
+        }
+        function gastoFromDb(r) {
+            return { id: r.id, fecha: r.fecha, desc: r.descripcion, cat: r.categoria, importe: r.importe };
+        }
+        function chequeToDb(c) {
+            return { id: c.id, fecha: c.fecha, cliente: c.cliente, nro: c.nro, vencimiento: c.vencimiento || null, importe: c.importe, estado: c.estado, proveedor: c.proveedor || null, fecha_cobrado: c.fechaCobrado || null };
+        }
+        function chequeFromDb(r) {
+            return { id: r.id, fecha: r.fecha, cliente: r.cliente, nro: r.nro, vencimiento: r.vencimiento, importe: r.importe, estado: r.estado, proveedor: r.proveedor || '', fechaCobrado: r.fecha_cobrado || '' };
+        }
+        function descuentoToDb(d) {
+            return { id: d.id, nro: d.nro, fecha_cheque: d.fechaCheque, fecha_desc: d.fechaDesc, original: d.original, neto: d.neto };
+        }
+        function descuentoFromDb(r) {
+            return { id: r.id, nro: r.nro, fechaCheque: r.fecha_cheque, fechaDesc: r.fecha_desc, original: r.original, neto: r.neto };
+        }
+        function ventaUsdToDb(v) {
+            return { id: v.id, fecha: v.fecha, tipo: v.tipo, cantidad: v.cantidad, tipo_cambio: v.tipoCambio, total: v.total };
+        }
+        function ventaUsdFromDb(r) {
+            return { id: r.id, fecha: r.fecha, tipo: r.tipo, cantidad: r.cantidad, tipoCambio: r.tipo_cambio, total: r.total };
+        }
+
+        // ----- Guardar config (saldos iniciales + proyecciones) con debounce -----
+        let guardarConfigTimeout = null;
+        function guardarConfig() {
+            clearTimeout(guardarConfigTimeout);
+            guardarConfigTimeout = setTimeout(() => {
+                const elArs = document.getElementById('saldo_ars_s1');
+                const elUsd = document.getElementById('saldo_usd_s1');
+                const saldoArs = elArs ? (parseFloat(elArs.value) || 0) : 0;
+                const saldoUsd = elUsd ? (parseFloat(elUsd.value) || 0) : 0;
+                sb.from('ramo_config').update({
+                    saldo_ars_s1: saldoArs,
+                    saldo_usd_s1: saldoUsd,
+                    valores_proyectados: valoresProyectados,
+                    updated_at: new Date().toISOString()
+                }).eq('id', 1).then(({ error }) => {
+                    if (error) { console.error('Error guardando config:', error); marcarBadge('error', 'Error al guardar'); }
+                });
+            }, 500);
+        }
+
+        // ----- Carga inicial desde Supabase -----
+        async function cargarDatosIniciales() {
+            marcarBadge('', 'Cargando datos...');
+            try {
+                const [rVentas, rGastos, rCheques, rDescuentos, rVentasUsd, rConfig] = await Promise.all([
+                    sb.from('ramo_ventas').select('*').order('fecha', { ascending: true }),
+                    sb.from('ramo_gastos').select('*').order('fecha', { ascending: true }),
+                    sb.from('ramo_cheques').select('*').order('fecha', { ascending: true }),
+                    sb.from('ramo_descuentos').select('*').order('fecha_desc', { ascending: true }),
+                    sb.from('ramo_ventas_usd').select('*').order('fecha', { ascending: true }),
+                    sb.from('ramo_config').select('*').eq('id', 1).maybeSingle()
+                ]);
+
+                if (rVentas.error) throw rVentas.error;
+                if (rGastos.error) throw rGastos.error;
+                if (rCheques.error) throw rCheques.error;
+                if (rDescuentos.error) throw rDescuentos.error;
+                if (rVentasUsd.error) throw rVentasUsd.error;
+                if (rConfig.error) throw rConfig.error;
+
+                ventas = (rVentas.data || []).map(ventaFromDb);
+                gastos = (rGastos.data || []).map(gastoFromDb);
+                cheques = (rCheques.data || []).map(chequeFromDb);
+                descuentos = (rDescuentos.data || []).map(descuentoFromDb);
+                ventasUSD = (rVentasUsd.data || []).map(ventaUsdFromDb);
+
+                if (rConfig.data) {
+                    const cfg = rConfig.data;
+                    const elArs = document.getElementById('saldo_ars_s1');
+                    const elUsd = document.getElementById('saldo_usd_s1');
+                    if (elArs && cfg.saldo_ars_s1 !== null && cfg.saldo_ars_s1 !== undefined) elArs.value = cfg.saldo_ars_s1;
+                    if (elUsd && cfg.saldo_usd_s1 !== null && cfg.saldo_usd_s1 !== undefined) elUsd.value = cfg.saldo_usd_s1;
+                    if (cfg.valores_proyectados && Object.keys(cfg.valores_proyectados).length > 0) {
+                        Object.keys(cfg.valores_proyectados).forEach(cat => {
+                            if (valoresProyectados[cat]) Object.assign(valoresProyectados[cat], cfg.valores_proyectados[cat]);
+                        });
+                    }
+                }
+                marcarBadge('ok', 'Sincronizado');
+            } catch (err) {
+                console.error('Error cargando datos de Supabase:', err);
+                marcarBadge('error', 'Sin conexión');
+                alert('No se pudieron cargar los datos desde Supabase. Revisá tu conexión a internet y volvé a abrir la app.');
+            }
+
+            mostrarVentas();
+            mostrarGastos();
+            mostrarCheques();
+            mostrarDescuentos();
+            mostrarVentasUSD();
+            actualizarDashboard();
+        }
+
+        // ----- Tiempo real: reflejar cambios hechos desde otra compu -----
+        function configurarRealtime() {
+            sb.channel('ramo-realtime-channel')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_ventas' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!ventas.find(v => v.id === payload.new.id)) ventas.push(ventaFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = ventas.findIndex(v => v.id === payload.new.id);
+                        if (idx >= 0) ventas[idx] = ventaFromDb(payload.new); else ventas.push(ventaFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        ventas = ventas.filter(v => v.id !== payload.old.id);
+                    }
+                    mostrarVentas(); actualizarDashboard(); actualizarCards();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_gastos' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!gastos.find(g => g.id === payload.new.id)) gastos.push(gastoFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = gastos.findIndex(g => g.id === payload.new.id);
+                        if (idx >= 0) gastos[idx] = gastoFromDb(payload.new); else gastos.push(gastoFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        gastos = gastos.filter(g => g.id !== payload.old.id);
+                    }
+                    mostrarGastos(); actualizarDashboard(); actualizarCards();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_cheques' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!cheques.find(c => c.id === payload.new.id)) cheques.push(chequeFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = cheques.findIndex(c => c.id === payload.new.id);
+                        if (idx >= 0) cheques[idx] = chequeFromDb(payload.new); else cheques.push(chequeFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        cheques = cheques.filter(c => c.id !== payload.old.id);
+                    }
+                    mostrarCheques(); actualizarDashboard(); actualizarCards();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_descuentos' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!descuentos.find(d => d.id === payload.new.id)) descuentos.push(descuentoFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = descuentos.findIndex(d => d.id === payload.new.id);
+                        if (idx >= 0) descuentos[idx] = descuentoFromDb(payload.new); else descuentos.push(descuentoFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        descuentos = descuentos.filter(d => d.id !== payload.old.id);
+                    }
+                    mostrarDescuentos();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_ventas_usd' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!ventasUSD.find(v => v.id === payload.new.id)) ventasUSD.push(ventaUsdFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = ventasUSD.findIndex(v => v.id === payload.new.id);
+                        if (idx >= 0) ventasUSD[idx] = ventaUsdFromDb(payload.new); else ventasUSD.push(ventaUsdFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        ventasUSD = ventasUSD.filter(v => v.id !== payload.old.id);
+                    }
+                    mostrarVentasUSD(); actualizarCards();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_config' }, (payload) => {
+                    if (!payload.new) return;
+                    const cfg = payload.new;
+                    const elArs = document.getElementById('saldo_ars_s1');
+                    const elUsd = document.getElementById('saldo_usd_s1');
+                    if (elArs && cfg.saldo_ars_s1 !== null && cfg.saldo_ars_s1 !== undefined) elArs.value = cfg.saldo_ars_s1;
+                    if (elUsd && cfg.saldo_usd_s1 !== null && cfg.saldo_usd_s1 !== undefined) elUsd.value = cfg.saldo_usd_s1;
+                    if (cfg.valores_proyectados) {
+                        Object.keys(cfg.valores_proyectados).forEach(cat => {
+                            if (valoresProyectados[cat]) Object.assign(valoresProyectados[cat], cfg.valores_proyectados[cat]);
+                        });
+                    }
+                    actualizarCards();
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') marcarBadge('ok', 'Sincronizado');
+                });
+        }
+
+        // ========== FUNCIONES HELPERS ==========
+        function formatNum(n) {
+            return new Intl.NumberFormat('es-AR').format(Math.round(n));
+        }
+
+        function calcularSemana(dia) {
+            if (dia <= 4) return 's1';
+            if (dia <= 11) return 's2';
+            if (dia <= 18) return 's3';
+            if (dia <= 25) return 's4';
+            return 's5';
+        }
+
+        function cambiarMes(mes) {
+            mesActual = mes;
+            console.log('Mes cambiado a:', mesActual);
+            mostrarCheques();
+        }
+
+        function mostrarPestana(nombre) {
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`pestana-${nombre}`).classList.add('active');
+            event.target.classList.add('active');
+            if (nombre === 'cashflow') actualizarCards();
+            if (nombre === 'dashboard') actualizarDashboard();
+        }
+
+        // ========== VENTAS ==========
+        function agregarVenta() {
+            const fecha = document.getElementById('venta-fecha').value;
+            const cliente = document.getElementById('venta-cliente').value;
+            const remito = document.getElementById('venta-remito').value;
+            const servicio = document.getElementById('venta-servicio').value;
+            const kilos = parseFloat(document.getElementById('venta-kilos').value) || 0;
+            const precioKilo = parseFloat(document.getElementById('venta-precio-kilo').value) || 0;
+            const importe = kilos * precioKilo;
+            const metodo = document.getElementById('venta-metodo').value;
+            const factura = document.getElementById('venta-factura').value;
+            const facturado = document.getElementById('venta-facturado').checked;
+            const cobrado = document.getElementById('venta-cobrado').checked;
+
+            if (!fecha || !cliente || !importe) {
+                alert('Completa fecha, cliente, kilos y precio');
+                return;
+            }
+
+            const nuevaVenta = { fecha, cliente, remito, servicio, kilos, precioKilo, importe, metodo, factura, facturado, cobrado, id: Date.now() };
+            ventas.push(nuevaVenta);
+            sb.from('ramo_ventas').insert(ventaToDb(nuevaVenta)).then(({ error }) => {
+                if (error) { console.error('Error guardando venta:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('venta-fecha').value = '';
+            document.getElementById('venta-cliente').value = '';
+            document.getElementById('venta-remito').value = '';
+            document.getElementById('venta-servicio').value = '';
+            document.getElementById('venta-kilos').value = '';
+            document.getElementById('venta-precio-kilo').value = '';
+            document.getElementById('venta-importe').value = '';
+            document.getElementById('venta-factura').value = '';
+            document.getElementById('venta-facturado').checked = false;
+            document.getElementById('venta-cobrado').checked = false;
+
+            mostrarVentas();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function editarVenta(id) {
+            const venta = ventas.find(v => v.id === id);
+            if (!venta) return;
+
+            document.getElementById('venta-fecha').value = venta.fecha;
+            document.getElementById('venta-cliente').value = venta.cliente;
+            document.getElementById('venta-remito').value = venta.remito;
+            document.getElementById('venta-servicio').value = venta.servicio;
+            document.getElementById('venta-kilos').value = venta.kilos;
+            document.getElementById('venta-precio-kilo').value = venta.precioKilo;
+            document.getElementById('venta-importe').value = venta.importe;
+            document.getElementById('venta-metodo').value = venta.metodo;
+            document.getElementById('venta-factura').value = venta.factura;
+            document.getElementById('venta-facturado').checked = venta.facturado;
+            document.getElementById('venta-cobrado').checked = venta.cobrado;
+
+            ventas = ventas.filter(v => v.id !== id);
+            sb.from('ramo_ventas').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando venta (editar):', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarVentas();
+        }
+
+        function cambiarFacturado(id) {
+            const venta = ventas.find(v => v.id === id);
+            if (venta) {
+                venta.facturado = !venta.facturado;
+                sb.from('ramo_ventas').update({ facturado: venta.facturado }).eq('id', id).then(({ error }) => {
+                    if (error) { console.error('Error actualizando facturado:', error); marcarBadge('error', 'Error al guardar'); }
+                });
+                mostrarVentas();
+            }
+        }
+
+        function cambiarCobrado(id) {
+            const venta = ventas.find(v => v.id === id);
+            if (venta) {
+                venta.cobrado = !venta.cobrado;
+                sb.from('ramo_ventas').update({ cobrado: venta.cobrado }).eq('id', id).then(({ error }) => {
+                    if (error) { console.error('Error actualizando cobrado:', error); marcarBadge('error', 'Error al guardar'); }
+                });
+                mostrarVentas();
+                actualizarCards();
+            }
+        }
+
+        function calcularImporte() {
+            const kilos = parseFloat(document.getElementById('venta-kilos').value) || 0;
+            const precio = parseFloat(document.getElementById('venta-precio-kilo').value) || 0;
+            const importe = kilos * precio;
+            document.getElementById('venta-importe').value = importe;
+        }
+
+        function eliminarVenta(id) {
+            ventas = ventas.filter(v => v.id !== id);
+            sb.from('ramo_ventas').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando venta:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarVentas();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function mostrarVentas() {
+            const tbody = document.getElementById('tbody-ventas');
+            tbody.innerHTML = ventas.map(v => `
+                <tr>
+                    <td>${v.fecha}</td>
+                    <td>${v.cliente}</td>
+                    <td>${v.remito}</td>
+                    <td>${v.servicio}</td>
+                    <td class="text-right">${v.kilos}</td>
+                    <td class="text-right">$${formatNum(v.precioKilo)}</td>
+                    <td class="text-right">$${formatNum(v.importe)}</td>
+                    <td>${v.metodo}</td>
+                    <td>${v.factura}</td>
+                    <td class="text-center"><input type="checkbox" ${v.facturado ? 'checked' : ''} onchange="cambiarFacturado(${v.id})" /></td>
+                    <td class="text-center"><input type="checkbox" ${v.cobrado ? 'checked' : ''} onchange="cambiarCobrado(${v.id})" /></td>
+                    <td><button class="btn-small" onclick="editarVenta(${v.id})" style="background:#9333ea;">✏️</button> <button class="btn-danger btn-small" onclick="eliminarVenta(${v.id})">✕</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== GASTOS ==========
+        function agregarGasto() {
+            const fecha = document.getElementById('gasto-fecha').value;
+            const desc = document.getElementById('gasto-desc').value;
+            const cat = document.getElementById('gasto-cat').value;
+            const importe = parseFloat(document.getElementById('gasto-importe').value) || 0;
+
+            if (!fecha || !desc || !cat || !importe) {
+                alert('Completa todos los campos');
+                return;
+            }
+
+            const nuevoGasto = { fecha, desc, cat, importe, id: Date.now() };
+            gastos.push(nuevoGasto);
+            sb.from('ramo_gastos').insert(gastoToDb(nuevoGasto)).then(({ error }) => {
+                if (error) { console.error('Error guardando gasto:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('gasto-fecha').value = '';
+            document.getElementById('gasto-desc').value = '';
+            document.getElementById('gasto-cat').value = '';
+            document.getElementById('gasto-importe').value = '';
+
+            mostrarGastos();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function eliminarGasto(id) {
+            gastos = gastos.filter(g => g.id !== id);
+            sb.from('ramo_gastos').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando gasto:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarGastos();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function mostrarGastos() {
+            const tbody = document.getElementById('tbody-gastos');
+            tbody.innerHTML = gastos.map(g => `
+                <tr>
+                    <td>${g.fecha}</td>
+                    <td>${g.desc}</td>
+                    <td>${categorias[g.cat]}</td>
+                    <td class="text-right">$${formatNum(g.importe)}</td>
+                    <td><button class="btn-danger btn-small" onclick="eliminarGasto(${g.id})">✕</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== CHEQUES ==========
+        function agregarCheque() {
+            const fecha = document.getElementById('cheque-fecha').value;
+            const cliente = document.getElementById('cheque-cliente').value;
+            const nro = document.getElementById('cheque-nro').value;
+            const vencimiento = document.getElementById('cheque-vencimiento').value;
+            const importe = parseFloat(document.getElementById('cheque-importe').value) || 0;
+            const estado = document.getElementById('cheque-estado').value;
+            const proveedor = document.getElementById('cheque-proveedor').value || '';
+            const fechaCobrado = document.getElementById('cheque-fecha-cobrado').value || '';
+
+            if (!fecha || !cliente || !nro || !importe) {
+                alert('Completa fecha, cliente, nro e importe');
+                return;
+            }
+
+            const nuevoCheque = { fecha, cliente, nro, vencimiento, importe, estado, proveedor, fechaCobrado, id: Date.now() };
+            cheques.push(nuevoCheque);
+            sb.from('ramo_cheques').insert(chequeToDb(nuevoCheque)).then(({ error }) => {
+                if (error) { console.error('Error guardando cheque:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('cheque-fecha').value = '';
+            document.getElementById('cheque-cliente').value = '';
+            document.getElementById('cheque-nro').value = '';
+            document.getElementById('cheque-vencimiento').value = '';
+            document.getElementById('cheque-importe').value = '';
+            document.getElementById('cheque-proveedor').value = '';
+            document.getElementById('cheque-fecha-cobrado').value = '';
+            document.getElementById('cheque-estado').value = 'Cartera';
+
+            mostrarCheques();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function editarCheque(id) {
+            const cheque = cheques.find(c => c.id === id);
+            if (!cheque) return;
+
+            document.getElementById('cheque-fecha').value = cheque.fecha;
+            document.getElementById('cheque-cliente').value = cheque.cliente;
+            document.getElementById('cheque-nro').value = cheque.nro;
+            document.getElementById('cheque-vencimiento').value = cheque.vencimiento;
+            document.getElementById('cheque-importe').value = cheque.importe;
+            document.getElementById('cheque-estado').value = cheque.estado;
+            document.getElementById('cheque-proveedor').value = cheque.proveedor || '';
+            document.getElementById('cheque-fecha-cobrado').value = cheque.fechaCobrado || '';
+            mostrarProveedorSiNecesario();
+
+            cheques = cheques.filter(c => c.id !== id);
+            sb.from('ramo_cheques').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando cheque (editar):', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarCheques();
+        }
+
+        function mostrarProveedorSiNecesario() {
+            const estado = document.getElementById('cheque-estado').value;
+            const grupo = document.getElementById('grupo-proveedor');
+            if (estado === 'Proveedor') {
+                grupo.style.display = 'flex';
+            } else {
+                grupo.style.display = 'none';
+            }
+        }
+
+        function eliminarCheque(id) {
+            cheques = cheques.filter(c => c.id !== id);
+            sb.from('ramo_cheques').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando cheque:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarCheques();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function obtenerMesDeFecha(fechaStr) {
+            if (fechaStr.includes('-')) {
+                return parseInt(fechaStr.split('-')[1]);
+            } else {
+                return parseInt(fechaStr.split('/')[1]);
+            }
+        }
+
+        function obtenerNumeroMesActual() {
+            const mesMap = {
+                'Septiembre': 9, 'Octubre': 10, 'Noviembre': 11, 'Diciembre': 12
+            };
+            return mesMap[mesActual] || 9;
+        }
+
+        function mostrarCheques() {
+            const tbody = document.getElementById('tbody-cheques');
+            const mesActualNum = obtenerNumeroMesActual();
+            const chequesFiltrados = cheques.filter(c => obtenerMesDeFecha(c.fecha) === mesActualNum);
+            
+            tbody.innerHTML = chequesFiltrados.map(c => `
+                <tr>
+                    <td>${c.fecha}</td>
+                    <td>${c.cliente}</td>
+                    <td>${c.nro}</td>
+                    <td>${c.vencimiento}</td>
+                    <td class="text-right">$${formatNum(c.importe)}</td>
+                    <td><span style="background: ${c.estado === 'Cartera' ? '#dcfce7' : c.estado === 'Descontado' ? '#fef3c7' : c.estado === 'Cobrado' ? '#dbeafe' : '#e9d5ff'}; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${c.estado}</span></td>
+                    <td>${c.proveedor || '-'}</td>
+                    <td>${c.fechaCobrado || '-'}</td>
+                    <td><button class="btn-small" onclick="editarCheque(${c.id})" style="background:#9333ea;">✏️</button> <button class="btn-danger btn-small" onclick="eliminarCheque(${c.id})">✕</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== USD COMPRA/VENTA ==========
+        function calcularTotalUSD() {
+            const cantidad = parseFloat(document.getElementById('usd-cantidad').value) || 0;
+            const tipoCambio = parseFloat(document.getElementById('usd-tipocambio').value) || 0;
+            const total = cantidad * tipoCambio;
+            document.getElementById('usd-total').value = total;
+        }
+
+        function agregarMovimientoUSD() {
+            const fecha = document.getElementById('usd-fecha').value;
+            const tipo = document.getElementById('usd-tipo').value;
+            const cantidad = parseFloat(document.getElementById('usd-cantidad').value) || 0;
+            const tipoCambio = parseFloat(document.getElementById('usd-tipocambio').value) || 0;
+            const total = cantidad * tipoCambio;
+
+            if (!fecha || !cantidad || !tipoCambio) {
+                alert('Completa fecha, cantidad USD y tipo de cambio');
+                return;
+            }
+
+            const nuevoMovUsd = { fecha, tipo, cantidad, tipoCambio, total, id: Date.now() };
+            ventasUSD.push(nuevoMovUsd);
+            sb.from('ramo_ventas_usd').insert(ventaUsdToDb(nuevoMovUsd)).then(({ error }) => {
+                if (error) { console.error('Error guardando movimiento USD:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('usd-fecha').value = '';
+            document.getElementById('usd-tipo').value = 'Venta';
+            document.getElementById('usd-cantidad').value = '';
+            document.getElementById('usd-tipocambio').value = '';
+            document.getElementById('usd-total').value = '';
+
+            mostrarVentasUSD();
+            actualizarCards();
+        }
+
+        function eliminarVentaUSD(id) {
+            ventasUSD = ventasUSD.filter(v => v.id !== id);
+            sb.from('ramo_ventas_usd').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando movimiento USD:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarVentasUSD();
+            actualizarCards();
+        }
+
+        function mostrarVentasUSD() {
+            const tbody = document.getElementById('tbody-ventausd');
+            tbody.innerHTML = ventasUSD.map(v => `
+                <tr>
+                    <td>${v.fecha}</td>
+                    <td><span style="background: ${v.tipo === 'Compra' ? '#d1fae5' : '#fecaca'}; padding: 2px 8px; border-radius: 3px; font-size: 11px;">${v.tipo}</span></td>
+                    <td class="text-right">${formatNum(v.cantidad)}</td>
+                    <td class="text-right">${formatNum(v.tipoCambio)}</td>
+                    <td class="text-right">$${formatNum(v.total)}</td>
+                    <td><button class="btn-danger btn-small" onclick="eliminarVentaUSD(${v.id})">✕</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== DESCUENTOS ==========
+        function agregarDescuento() {
+            const nro = document.getElementById('desc-nro').value;
+            const fechaCheque = document.getElementById('desc-fecha-cheque').value;
+            const fechaDesc = document.getElementById('desc-fecha-desc').value;
+            const original = parseFloat(document.getElementById('desc-original').value) || 0;
+            const neto = parseFloat(document.getElementById('desc-neto').value) || 0;
+
+            if (!nro || !fechaCheque || !fechaDesc || !original || !neto) {
+                alert('Completa todos los campos');
+                return;
+            }
+
+            const nuevoDescuento = { nro, fechaCheque, fechaDesc, original, neto, id: Date.now() };
+            descuentos.push(nuevoDescuento);
+            sb.from('ramo_descuentos').insert(descuentoToDb(nuevoDescuento)).then(({ error }) => {
+                if (error) { console.error('Error guardando descuento:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('desc-nro').value = '';
+            document.getElementById('desc-fecha-cheque').value = '';
+            document.getElementById('desc-fecha-desc').value = '';
+            document.getElementById('desc-original').value = '';
+            document.getElementById('desc-neto').value = '';
+
+            mostrarDescuentos();
+        }
+
+        function eliminarDescuento(id) {
+            descuentos = descuentos.filter(d => d.id !== id);
+            sb.from('ramo_descuentos').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando descuento:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarDescuentos();
+        }
+
+        function mostrarDescuentos() {
+            const tbody = document.getElementById('tbody-descuentos');
+            tbody.innerHTML = descuentos.map(d => {
+                const costo = d.original - d.neto;
+                const costoPct = ((costo / d.original) * 100).toFixed(2);
+                return `
+                    <tr>
+                        <td>${d.nro}</td>
+                        <td>${d.fechaCheque}</td>
+                        <td>${d.fechaDesc}</td>
+                        <td class="text-right">$${formatNum(d.original)}</td>
+                        <td class="text-right">$${formatNum(d.neto)}</td>
+                        <td class="text-right">$${formatNum(costo)}</td>
+                        <td class="text-right">${costoPct}%</td>
+                        <td><button class="btn-danger btn-small" onclick="eliminarDescuento(${d.id})">✕</button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ========== CASH FLOW ==========
+        function calcularRealPorSemana(cat, semana) {
+            return gastos
+                .filter(g => g.cat === cat && calcularSemana(new Date(g.fecha).getDate()) === semana)
+                .reduce((sum, g) => sum + g.importe, 0);
+        }
+
+        function calcularIngresosPorSemana(tipo, semana) {
+            if (tipo === 'ventas') {
+                return ventas
+                    .filter(v => v.cobrado && (v.metodo === 'Efectivo' || v.metodo === 'Transferencia') && calcularSemana(new Date(v.fecha).getDate()) === semana)
+                    .reduce((sum, v) => sum + v.importe, 0);
+            }
+            if (tipo === 'usd') {
+                return ventasUSD
+                    .filter(v => v.tipo === 'Venta' && calcularSemana(new Date(v.fecha).getDate()) === semana)
+                    .reduce((sum, v) => sum + v.total, 0);
+            }
+            if (tipo === 'cheques') {
+                // Cheques Descontados + Cobrados con fecha de cobro en esa semana
+                return cheques
+                    .filter(c => (c.estado === 'Descontado' || c.estado === 'Cobrado') && c.fechaCobrado && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
+                    .reduce((sum, c) => sum + c.importe, 0);
+            }
+            return 0;
+        }
+
+        function obtenerChequesProyectadosPorMes() {
+            const chequesCartera = cheques.filter(c => c.estado === 'Cartera');
+            const mesosMap = {
+                'Septiembre': 9, 'Octubre': 10, 'Noviembre': 11, 'Diciembre': 12
+            };
+            const mesosResultado = {};
+            
+            chequesCartera.forEach(c => {
+                const fechaVencimiento = new Date(c.vencimiento);
+                const mesVencimiento = fechaVencimiento.getMonth() + 1;
+                const nombreMes = Object.keys(mesosMap).find(mes => mesosMap[mes] === mesVencimiento) || `Mes ${mesVencimiento}`;
+                mesosResultado[nombreMes] = (mesosResultado[nombreMes] || 0) + c.importe;
+            });
+            
+            return mesosResultado;
+        }
+
+        // CORRECCIÓN 1: Función actualizarCards() - Recalcula TODO
+        function actualizarCards() {
+            // Verificar si estamos en la pestaña Cash Flow
+            const tabla_ingresos = document.getElementById('tabla-ingresos-semana');
+            if (!tabla_ingresos) {
+                // No estamos en Cash Flow, actualizar solo Dashboard
+                actualizarDashboard();
+                return;
+            }
+
+            // Tabla de Ingresos por Semana
+            ['s1', 's2', 's3', 's4', 's5'].forEach(sem => {
+                const ingVentas = calcularIngresosPorSemana('ventas', sem);
+                const ingUSD = calcularIngresosPorSemana('usd', sem);
+                const ingCheques = calcularIngresosPorSemana('cheques', sem);
+                const total = ingVentas + ingUSD + ingCheques;
+
+                const elem1 = document.getElementById(`ing-ventas-${sem}`);
+                const elem2 = document.getElementById(`ing-usd-${sem}`);
+                const elem3 = document.getElementById(`ing-cheq-${sem}`);
+                const elem4 = document.getElementById(`ing-total-${sem}`);
+                
+                if (elem1) elem1.textContent = formatNum(ingVentas);
+                if (elem2) elem2.textContent = formatNum(ingUSD);
+                if (elem3) elem3.textContent = formatNum(ingCheques);
+                if (elem4) elem4.textContent = formatNum(total);
+            });
+
+            // ===== GASTOS FIJOS =====
+            let htmlFijos = `
+                <thead>
+                    <tr>
+                        <th>CONCEPTO</th>
+                        <th colspan="3" class="text-right">S1</th>
+                        <th colspan="3" class="text-right">S2</th>
+                        <th colspan="3" class="text-right">S3</th>
+                        <th colspan="3" class="text-right">S4</th>
+                        <th colspan="3" class="text-right">S5</th>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            gastosFijos.forEach(cat => {
+                htmlFijos += `<tr><td class="label">${categorias[cat]}</td>`;
+                ['s1', 's2', 's3', 's4', 's5'].forEach(sem => {
+                    const proy = valoresProyectados[cat][sem];
+                    const real = calcularRealPorSemana(cat, sem);
+                    const dif = proy - real;
+                    htmlFijos += `
+                        <td class="proyectado text-right"><input type="number" value="${proy}" onchange="actualizarProyectado('${cat}', '${sem}', this.value); actualizarCards();" style="width:80px;" /></td>
+                        <td class="real text-right">$${formatNum(real)}</td>
+                        <td class="diferencia text-right">$${formatNum(dif)}</td>
+                    `;
+                });
+                htmlFijos += `</tr>`;
+            });
+
+            htmlFijos += `</tbody></table>`;
+            const tabla_fijos = document.getElementById('tabla-fijos');
+            if (tabla_fijos) tabla_fijos.innerHTML = htmlFijos;
+
+            // ===== GASTOS VARIABLES =====
+            let htmlVariables = `
+                <thead>
+                    <tr>
+                        <th>CONCEPTO</th>
+                        <th colspan="3" class="text-right">S1</th>
+                        <th colspan="3" class="text-right">S2</th>
+                        <th colspan="3" class="text-right">S3</th>
+                        <th colspan="3" class="text-right">S4</th>
+                        <th colspan="3" class="text-right">S5</th>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                        <th class="proyectado text-right">P</th>
+                        <th class="real text-right">R</th>
+                        <th class="diferencia text-right">Dif</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            gastosVariables.forEach(cat => {
+                htmlVariables += `<tr><td class="label">${categorias[cat]}</td>`;
+                ['s1', 's2', 's3', 's4', 's5'].forEach(sem => {
+                    const proy = valoresProyectados[cat][sem];
+                    const real = calcularRealPorSemana(cat, sem);
+                    const dif = proy - real;
+                    htmlVariables += `
+                        <td class="proyectado text-right"><input type="number" value="${proy}" onchange="actualizarProyectado('${cat}', '${sem}', this.value); actualizarCards();" style="width:80px;" /></td>
+                        <td class="real text-right">$${formatNum(real)}</td>
+                        <td class="diferencia text-right">$${formatNum(dif)}</td>
+                    `;
+                });
+                htmlVariables += `</tr>`;
+            });
+
+            htmlVariables += `</tbody></table>`;
+            const tabla_variables = document.getElementById('tabla-variables');
+            if (tabla_variables) tabla_variables.innerHTML = htmlVariables;
+
+            // ===== FLUJO DE CAJA =====
+            actualizarFlujoCaja();
+
+            // ===== CARDS DE ARRIBA =====
+            const totalVentas = ventas
+                .filter(v => v.cobrado)
+                .reduce((sum, v) => sum + v.importe, 0);
+
+            const totalGastos = gastos.reduce((sum, g) => sum + g.importe, 0);
+
+            const elem_dash_ventas = document.getElementById('dash-ventas');
+            const elem_dash_gastos = document.getElementById('dash-gastos');
+            const elem_dash_saldo = document.getElementById('dash-saldo');
+            
+            if (elem_dash_ventas) elem_dash_ventas.textContent = `$${formatNum(totalVentas)}`;
+            if (elem_dash_gastos) elem_dash_gastos.textContent = `$${formatNum(totalGastos)}`;
+
+            const saldoFinS5Elem = document.getElementById('fc-saldo-fin-s5');
+            if (saldoFinS5Elem) {
+                const saldoFinS5 = parseFloat(saldoFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0;
+                
+                let ultimoTipoCambio = 1200;
+                if (ventasUSD.length > 0) {
+                    ultimoTipoCambio = ventasUSD[ventasUSD.length - 1].tipoCambio;
+                }
+                
+                const saldoUSDFinS5Elem = document.getElementById('saldo_usd_s5');
+                const saldoUSDFinS5 = saldoUSDFinS5Elem ? parseFloat(saldoUSDFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0 : 0;
+                const saldoCaja = saldoFinS5 + (saldoUSDFinS5 * ultimoTipoCambio);
+                
+                if (elem_dash_saldo) elem_dash_saldo.textContent = `$${formatNum(saldoCaja)}`;
+            }
+
+            // ===== DASHBOARD =====
+            actualizarDashboard();
+        }
+
+        function actualizarFlujoCaja() {
+            const saldosFinales = {}; // Guardar saldos finales para traslados
+            const saldosUSDFinales = {}; // Guardar saldos USD finales
+            
+            ['s1', 's2', 's3', 's4', 's5'].forEach((sem, idx) => {
+                // ===== SALDO INICIAL ARS =====
+                let saldoInicialARS = 0;
+                
+                if (sem === 's1') {
+                    const saldoS1 = parseFloat(document.getElementById('saldo_ars_s1').value) || 0;
+                    saldoInicialARS = saldoS1;
+                } else {
+                    // Traslada Saldo Final de la semana anterior
+                    const semAnterior = ['s1', 's2', 's3', 's4'][idx - 1];
+                    saldoInicialARS = saldosFinales[semAnterior] || 0;
+                }
+
+                // ===== SALDO INICIAL USD =====
+                let saldoInicialUSD = 0;
+                if (sem === 's1') {
+                    saldoInicialUSD = parseFloat(document.getElementById('saldo_usd_s1').value) || 0;
+                } else {
+                    const semAnterior = ['s1', 's2', 's3', 's4'][idx - 1];
+                    saldoInicialUSD = saldosUSDFinales[semAnterior] || 0;
+                }
+
+                // ===== INGRESOS =====
+                const ingVentas = calcularIngresosPorSemana('ventas', sem);
+                const ingUSD = calcularIngresosPorSemana('usd', sem);
+                const ingCheques = calcularIngresosPorSemana('cheques', sem);
+                const totalIngresos = ingVentas + ingUSD + ingCheques;
+
+                // ===== GASTOS =====
+                let totalGastos = 0;
+                [...gastosFijos, ...gastosVariables].forEach(cat => {
+                    totalGastos += calcularRealPorSemana(cat, sem);
+                });
+
+                // ===== SALDO FINAL ARS =====
+                const saldoFinalARS = saldoInicialARS + totalIngresos - totalGastos;
+                saldosFinales[sem] = saldoFinalARS;
+
+                // ===== SALDO FINAL USD =====
+                let saldoFinalUSD = saldoInicialUSD;
+                ventasUSD.forEach(v => {
+                    const fechaMov = new Date(v.fecha);
+                    const semanaMov = obtenerSemanaDeFecha(fechaMov);
+                    if (semanaMov === sem) {
+                        if (v.tipo === 'Compra') {
+                            saldoFinalUSD += v.cantidad;
+                        } else {
+                            saldoFinalUSD -= v.cantidad;
+                        }
+                    }
+                });
+                saldosUSDFinales[sem] = saldoFinalUSD;
+
+                // ===== ACTUALIZAR DOM (verificar que existan) =====
+                const elem_ini = document.getElementById(`fc-saldo-ini-${sem}`);
+                const elem_ing = document.getElementById(`fc-ingresos-${sem}`);
+                const elem_gas = document.getElementById(`fc-gastos-${sem}`);
+                const elem_fin = document.getElementById(`fc-saldo-fin-${sem}`);
+                
+                if (elem_ini) elem_ini.textContent = formatNum(saldoInicialARS);
+                if (elem_ing) elem_ing.textContent = formatNum(totalIngresos);
+                if (elem_gas) elem_gas.textContent = formatNum(totalGastos);
+                if (elem_fin) elem_fin.textContent = formatNum(saldoFinalARS);
+
+                // Actualizar tabla Saldos Iniciales (S2-S5 automáticos)
+                if (sem !== 's1') {
+                    const elem_ars = document.getElementById(`saldo_ars_${sem}`);
+                    const elem_usd = document.getElementById(`saldo_usd_${sem}`);
+                    
+                    if (elem_ars) elem_ars.textContent = formatNum(saldoInicialARS);
+                    if (elem_usd) elem_usd.textContent = formatNum(saldoInicialUSD);
+                }
+            });
+        }
+
+        function obtenerSemanaDeFecha(fecha) {
+            const dia = fecha.getDate();
+            if (dia <= 4) return 's1';
+            if (dia <= 11) return 's2';
+            if (dia <= 18) return 's3';
+            if (dia <= 25) return 's4';
+            return 's5';
+        }
+
+        function actualizarProyectado(cat, sem, valor) {
+            valoresProyectados[cat][sem] = parseFloat(valor) || 0;
+            guardarConfig();
+        }
+
+        // ========== DASHBOARD ==========
+        function actualizarDashboard() {
+            const totalVentas = ventas.reduce((sum, v) => sum + v.importe, 0);
+            const totalGastos = gastos.reduce((sum, g) => sum + g.importe, 0);
+            const totalCartera = cheques
+                .filter(c => c.estado === 'Cartera')
+                .reduce((sum, c) => sum + c.importe, 0);
+            const saldo = totalVentas - totalGastos;
+
+            const elem_ventas = document.getElementById('dash-ventas');
+            const elem_gastos = document.getElementById('dash-gastos');
+            const elem_saldo = document.getElementById('dash-saldo');
+            const elem_cartera = document.getElementById('dash-cartera');
+            
+            if (elem_ventas) elem_ventas.textContent = `$${formatNum(totalVentas)}`;
+            if (elem_gastos) elem_gastos.textContent = `$${formatNum(totalGastos)}`;
+            if (elem_saldo) elem_saldo.textContent = `$${formatNum(saldo)}`;
+            if (elem_cartera) elem_cartera.textContent = `$${formatNum(totalCartera)}`;
+
+            const clientesMap = {};
+            ventas.forEach(v => {
+                clientesMap[v.cliente] = (clientesMap[v.cliente] || 0) + v.importe;
+            });
+            const topClientes = Object.entries(clientesMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const tbodyClientes = document.getElementById('tbody-top-clientes');
+            if (tbodyClientes) {
+                tbodyClientes.innerHTML = topClientes.map(([cliente, monto]) => {
+                    const pct = ((monto / totalVentas) * 100).toFixed(1);
+                    return `<tr><td>${cliente}</td><td class="text-right">$${formatNum(monto)}</td><td class="text-right">${pct}%</td></tr>`;
+                }).join('');
+            }
+
+            const catMap = {};
+            gastos.forEach(g => {
+                catMap[g.cat] = (catMap[g.cat] || 0) + g.importe;
+            });
+            const topCat = Object.entries(catMap)
+                .sort((a, b) => b[1] - a[1]);
+            
+            const tbodyCat = document.getElementById('tbody-gastos-categoria');
+            if (tbodyCat) {
+                tbodyCat.innerHTML = topCat.map(([cat, monto]) => {
+                    const pct = ((monto / totalGastos) * 100).toFixed(1);
+                    return `<tr><td>${categorias[cat]}</td><td class="text-right">$${formatNum(monto)}</td><td class="text-right">${pct}%</td></tr>`;
+                }).join('');
+            }
+        }
+
+        // Iniciar - Cargar desde Supabase y suscribirse a cambios en tiempo real
+        cargarDatosIniciales().then(() => {
+            configurarRealtime();
+        });
+    </script>
+</body>
+</html>
