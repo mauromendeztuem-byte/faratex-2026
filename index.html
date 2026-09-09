@@ -77,10 +77,22 @@
             <div class="header-right">
                 <label style="font-size: 12px; opacity: 0.8;">Mes Actual:</label>
                 <select id="mes-selector" class="mes-selector" onchange="cambiarMes(this.value)">
-                    <option value="Septiembre">Septiembre 2026</option>
-                    <option value="Octubre">Octubre 2026</option>
-                    <option value="Noviembre">Noviembre 2026</option>
-                    <option value="Diciembre">Diciembre 2026</option>
+                    <option value="2026-09">Septiembre 2026</option>
+                    <option value="2026-10">Octubre 2026</option>
+                    <option value="2026-11">Noviembre 2026</option>
+                    <option value="2026-12">Diciembre 2026</option>
+                    <option value="2027-01">Enero 2027</option>
+                    <option value="2027-02">Febrero 2027</option>
+                    <option value="2027-03">Marzo 2027</option>
+                    <option value="2027-04">Abril 2027</option>
+                    <option value="2027-05">Mayo 2027</option>
+                    <option value="2027-06">Junio 2027</option>
+                    <option value="2027-07">Julio 2027</option>
+                    <option value="2027-08">Agosto 2027</option>
+                    <option value="2027-09">Septiembre 2027</option>
+                    <option value="2027-10">Octubre 2027</option>
+                    <option value="2027-11">Noviembre 2027</option>
+                    <option value="2027-12">Diciembre 2027</option>
                 </select>
             </div>
         </header>
@@ -610,7 +622,7 @@
 
     <script>
         // ========== DATOS ==========
-        let mesActual = 'Septiembre';
+        let mesActual = '2026-09'; // formato 'AAAA-MM'
         let ventas = [];
         let gastos = [];
         let cheques = [];
@@ -890,6 +902,7 @@
             mesActual = mes;
             console.log('Mes cambiado a:', mesActual);
             mostrarCheques();
+            actualizarCards();
         }
 
         function mostrarPestana(nombre) {
@@ -1158,24 +1171,50 @@
             }
         }
 
+        function obtenerAnioDeFecha(fechaStr) {
+            if (!fechaStr) return 0;
+            if (fechaStr.includes('-')) {
+                return parseInt(fechaStr.split('-')[0]);
+            } else {
+                // dd/mm/aaaa
+                return parseInt(fechaStr.split('/')[2]);
+            }
+        }
+
+        // Índice comparable año+mes (ej: 2026-09 -> 24321) para poder
+        // ordenar/comparar fechas de distintos años sin ambigüedad.
+        function obtenerIndiceMes(anio, mes) {
+            return anio * 12 + mes;
+        }
+
+        function obtenerIndiceMesDeFecha(fechaStr) {
+            return obtenerIndiceMes(obtenerAnioDeFecha(fechaStr), obtenerMesDeFecha(fechaStr));
+        }
+
         function obtenerNumeroMesActual() {
-            const mesMap = {
-                'Septiembre': 9, 'Octubre': 10, 'Noviembre': 11, 'Diciembre': 12
-            };
-            return mesMap[mesActual] || 9;
+            return parseInt(mesActual.split('-')[1]);
+        }
+
+        function obtenerAnioMesActual() {
+            return parseInt(mesActual.split('-')[0]);
+        }
+
+        function obtenerIndiceMesActual() {
+            return obtenerIndiceMes(obtenerAnioMesActual(), obtenerNumeroMesActual());
         }
 
         function mostrarCheques() {
             const tbody = document.getElementById('tbody-cheques');
-            const mesActualNum = obtenerNumeroMesActual();
+            const indiceMesActual = obtenerIndiceMesActual();
             const chequesFiltrados = cheques.filter(c => {
-                const mesFecha = obtenerMesDeFecha(c.fecha);
+                const indiceFecha = obtenerIndiceMesDeFecha(c.fecha);
                 if (c.estado === 'Cartera') {
                     // Un cheque en cartera sigue pendiente: se muestra en su mes de
-                    // origen y en todos los meses siguientes hasta que cambie de estado.
-                    return mesFecha <= mesActualNum;
+                    // origen y en todos los meses siguientes (aunque cambie el año)
+                    // hasta que cambie de estado.
+                    return indiceFecha <= indiceMesActual;
                 }
-                return mesFecha === mesActualNum;
+                return indiceFecha === indiceMesActual;
             });
 
             tbody.innerHTML = chequesFiltrados.map(c => `
@@ -1308,26 +1347,28 @@
 
         // ========== CASH FLOW ==========
         function calcularRealPorSemana(cat, semana) {
+            const indiceMesActual = obtenerIndiceMesActual();
             return gastos
-                .filter(g => g.cat === cat && calcularSemana(new Date(g.fecha).getDate()) === semana)
+                .filter(g => g.cat === cat && obtenerIndiceMesDeFecha(g.fecha) === indiceMesActual && calcularSemana(new Date(g.fecha).getDate()) === semana)
                 .reduce((sum, g) => sum + g.importe, 0);
         }
 
         function calcularIngresosPorSemana(tipo, semana) {
+            const indiceMesActual = obtenerIndiceMesActual();
             if (tipo === 'ventas') {
                 return ventas
-                    .filter(v => v.cobrado && (v.metodo === 'Efectivo' || v.metodo === 'Transferencia') && calcularSemana(new Date(v.fecha).getDate()) === semana)
+                    .filter(v => v.cobrado && (v.metodo === 'Efectivo' || v.metodo === 'Transferencia') && obtenerIndiceMesDeFecha(v.fecha) === indiceMesActual && calcularSemana(new Date(v.fecha).getDate()) === semana)
                     .reduce((sum, v) => sum + v.importe, 0);
             }
             if (tipo === 'usd') {
                 return ventasUSD
-                    .filter(v => v.tipo === 'Venta' && calcularSemana(new Date(v.fecha).getDate()) === semana)
+                    .filter(v => v.tipo === 'Venta' && obtenerIndiceMesDeFecha(v.fecha) === indiceMesActual && calcularSemana(new Date(v.fecha).getDate()) === semana)
                     .reduce((sum, v) => sum + v.total, 0);
             }
             if (tipo === 'cheques') {
-                // Cheques Descontados + Cobrados con fecha de cobro en esa semana
+                // Cheques Descontados + Cobrados, contados en el mes en que se cobraron/descontaron
                 return cheques
-                    .filter(c => (c.estado === 'Descontado' || c.estado === 'Cobrado') && c.fechaCobrado && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
+                    .filter(c => (c.estado === 'Descontado' || c.estado === 'Cobrado') && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
                     .reduce((sum, c) => sum + c.importe, 0);
             }
             return 0;
@@ -1485,34 +1526,43 @@
             // ===== FLUJO DE CAJA =====
             actualizarFlujoCaja();
 
-            // ===== CARDS DE ARRIBA =====
-            const totalVentas = ventas
-                .filter(v => v.cobrado)
-                .reduce((sum, v) => sum + v.importe, 0);
+            // ===== CARDS DE ARRIBA (Cash Flow) =====
+            const indiceMesActualCards = obtenerIndiceMesActual();
 
-            const totalGastos = gastos.reduce((sum, g) => sum + g.importe, 0);
+            // Ingresos del mes = ventas en efectivo/transferencia cobradas + cheques
+            // cobrados/descontados + venta de dólares, todo contado en el mes elegido.
+            const totalIngresos = ['s1', 's2', 's3', 's4', 's5'].reduce((sum, sem) => {
+                return sum
+                    + calcularIngresosPorSemana('ventas', sem)
+                    + calcularIngresosPorSemana('usd', sem)
+                    + calcularIngresosPorSemana('cheques', sem);
+            }, 0);
 
-            const elem_dash_ventas = document.getElementById('dash-ventas');
-            const elem_dash_gastos = document.getElementById('dash-gastos');
-            const elem_dash_saldo = document.getElementById('dash-saldo');
-            
-            if (elem_dash_ventas) elem_dash_ventas.textContent = `$${formatNum(totalVentas)}`;
-            if (elem_dash_gastos) elem_dash_gastos.textContent = `$${formatNum(totalGastos)}`;
+            const totalGastosReales = gastos
+                .filter(g => obtenerIndiceMesDeFecha(g.fecha) === indiceMesActualCards)
+                .reduce((sum, g) => sum + g.importe, 0);
+
+            const elem_cf_ingresos = document.getElementById('cf-ingresos');
+            const elem_cf_gastos = document.getElementById('cf-gastos');
+            const elem_cf_saldo = document.getElementById('cf-saldo');
+
+            if (elem_cf_ingresos) elem_cf_ingresos.textContent = `$${formatNum(totalIngresos)}`;
+            if (elem_cf_gastos) elem_cf_gastos.textContent = `$${formatNum(totalGastosReales)}`;
 
             const saldoFinS5Elem = document.getElementById('fc-saldo-fin-s5');
             if (saldoFinS5Elem) {
                 const saldoFinS5 = parseFloat(saldoFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0;
-                
+
                 let ultimoTipoCambio = 1200;
                 if (ventasUSD.length > 0) {
                     ultimoTipoCambio = ventasUSD[ventasUSD.length - 1].tipoCambio;
                 }
-                
+
                 const saldoUSDFinS5Elem = document.getElementById('saldo_usd_s5');
                 const saldoUSDFinS5 = saldoUSDFinS5Elem ? parseFloat(saldoUSDFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0 : 0;
                 const saldoCaja = saldoFinS5 + (saldoUSDFinS5 * ultimoTipoCambio);
-                
-                if (elem_dash_saldo) elem_dash_saldo.textContent = `$${formatNum(saldoCaja)}`;
+
+                if (elem_cf_saldo) elem_cf_saldo.textContent = `$${formatNum(saldoCaja)}`;
             }
 
             // ===== DASHBOARD =====
