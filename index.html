@@ -101,6 +101,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="mostrarPestana('dashboard')">Dashboard</button>
             <button class="tab-btn" onclick="mostrarPestana('ventas')">Ventas</button>
+            <button class="tab-btn" onclick="mostrarPestana('cobros')">Cobros</button>
             <button class="tab-btn" onclick="mostrarPestana('gastos')">Gastos</button>
             <button class="tab-btn" onclick="mostrarPestana('cheques')">Cheques</button>
             <button class="tab-btn" onclick="mostrarPestana('descuentos')">Descuentos</button>
@@ -207,12 +208,6 @@
                         <span>Facturado</span>
                     </label>
                 </div>
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
-                        <input type="checkbox" id="venta-cobrado" />
-                        <span>Cobrado</span>
-                    </label>
-                </div>
             </div>
             <button onclick="agregarVenta()" style="margin-top: 15px;">Agregar Venta</button>
 
@@ -230,11 +225,51 @@
                         <th>Método</th>
                         <th>Factura</th>
                         <th class="text-center">Fact.</th>
-                        <th class="text-center">Cobrado</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody id="tbody-ventas"></tbody>
+            </table>
+        </div>
+
+        <!-- ======== COBROS ======== -->
+        <div class="card" id="pestana-cobros">
+            <h2>Registrar Cobro</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="cobro-fecha" />
+                </div>
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <input type="text" id="cobro-cliente" placeholder="Nombre cliente" />
+                </div>
+                <div class="form-group">
+                    <label>Método de Pago</label>
+                    <select id="cobro-metodo">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Monto de Cobranza</label>
+                    <input type="number" id="cobro-importe" placeholder="$" />
+                </div>
+            </div>
+            <button onclick="agregarCobro()" style="margin-top: 15px;">Agregar Cobro</button>
+
+            <h2 style="margin-top: 30px;">Cobros Registrados</h2>
+            <table id="tabla-cobros">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Método</th>
+                        <th class="text-right">Importe</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-cobros"></tbody>
             </table>
         </div>
 
@@ -525,12 +560,12 @@
                 </thead>
                 <tbody>
                     <tr class="bg-green">
-                        <td><strong>Ventas Efectivo/Transfer COBRADAS</strong></td>
-                        <td class="text-right">$<span id="ing-ventas-s1">0</span></td>
-                        <td class="text-right">$<span id="ing-ventas-s2">0</span></td>
-                        <td class="text-right">$<span id="ing-ventas-s3">0</span></td>
-                        <td class="text-right">$<span id="ing-ventas-s4">0</span></td>
-                        <td class="text-right">$<span id="ing-ventas-s5">0</span></td>
+                        <td><strong>Cobros (Efectivo/Transferencia)</strong></td>
+                        <td class="text-right">$<span id="ing-cobros-s1">0</span></td>
+                        <td class="text-right">$<span id="ing-cobros-s2">0</span></td>
+                        <td class="text-right">$<span id="ing-cobros-s3">0</span></td>
+                        <td class="text-right">$<span id="ing-cobros-s4">0</span></td>
+                        <td class="text-right">$<span id="ing-cobros-s5">0</span></td>
                     </tr>
                     <tr class="bg-blue">
                         <td><strong>Venta USD → ARS</strong></td>
@@ -624,6 +659,7 @@
         // ========== DATOS ==========
         let mesActual = '2026-09'; // formato 'AAAA-MM'
         let ventas = [];
+        let cobros = [];
         let gastos = [];
         let cheques = [];
         let descuentos = [];
@@ -695,10 +731,16 @@
 
         // ----- Mapeo JS <-> columnas Supabase -----
         function ventaToDb(v) {
-            return { id: v.id, fecha: v.fecha, cliente: v.cliente, remito: v.remito, servicio: v.servicio, kilos: v.kilos, precio_kilo: v.precioKilo, importe: v.importe, metodo: v.metodo, factura: v.factura, facturado: v.facturado, cobrado: v.cobrado };
+            return { id: v.id, fecha: v.fecha, cliente: v.cliente, remito: v.remito, servicio: v.servicio, kilos: v.kilos, precio_kilo: v.precioKilo, importe: v.importe, metodo: v.metodo, factura: v.factura, facturado: v.facturado };
         }
         function ventaFromDb(r) {
-            return { id: r.id, fecha: r.fecha, cliente: r.cliente, remito: r.remito, servicio: r.servicio, kilos: r.kilos, precioKilo: r.precio_kilo, importe: r.importe, metodo: r.metodo, factura: r.factura, facturado: r.facturado, cobrado: r.cobrado };
+            return { id: r.id, fecha: r.fecha, cliente: r.cliente, remito: r.remito, servicio: r.servicio, kilos: r.kilos, precioKilo: r.precio_kilo, importe: r.importe, metodo: r.metodo, factura: r.factura, facturado: r.facturado };
+        }
+        function cobroToDb(c) {
+            return { id: c.id, fecha: c.fecha, cliente: c.cliente, metodo: c.metodo, importe: c.importe };
+        }
+        function cobroFromDb(r) {
+            return { id: r.id, fecha: r.fecha, cliente: r.cliente, metodo: r.metodo, importe: r.importe };
         }
         function gastoToDb(g) {
             return { id: g.id, fecha: g.fecha, descripcion: g.desc, categoria: g.cat, importe: g.importe };
@@ -749,8 +791,9 @@
         async function cargarDatosIniciales() {
             marcarBadge('', 'Cargando datos...');
             try {
-                const [rVentas, rGastos, rCheques, rDescuentos, rVentasUsd, rConfig] = await Promise.all([
+                const [rVentas, rCobros, rGastos, rCheques, rDescuentos, rVentasUsd, rConfig] = await Promise.all([
                     sb.from('ramo_ventas').select('*').order('fecha', { ascending: true }),
+                    sb.from('ramo_cobros').select('*').order('fecha', { ascending: true }),
                     sb.from('ramo_gastos').select('*').order('fecha', { ascending: true }),
                     sb.from('ramo_cheques').select('*').order('fecha', { ascending: true }),
                     sb.from('ramo_descuentos').select('*').order('fecha_desc', { ascending: true }),
@@ -759,6 +802,7 @@
                 ]);
 
                 if (rVentas.error) throw rVentas.error;
+                if (rCobros.error) throw rCobros.error;
                 if (rGastos.error) throw rGastos.error;
                 if (rCheques.error) throw rCheques.error;
                 if (rDescuentos.error) throw rDescuentos.error;
@@ -766,6 +810,7 @@
                 if (rConfig.error) throw rConfig.error;
 
                 ventas = (rVentas.data || []).map(ventaFromDb);
+                cobros = (rCobros.data || []).map(cobroFromDb);
                 gastos = (rGastos.data || []).map(gastoFromDb);
                 cheques = (rCheques.data || []).map(chequeFromDb);
                 descuentos = (rDescuentos.data || []).map(descuentoFromDb);
@@ -791,6 +836,7 @@
             }
 
             mostrarVentas();
+            mostrarCobros();
             mostrarGastos();
             mostrarCheques();
             mostrarDescuentos();
@@ -811,6 +857,17 @@
                         ventas = ventas.filter(v => v.id !== payload.old.id);
                     }
                     mostrarVentas(); actualizarDashboard(); actualizarCards();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_cobros' }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        if (!cobros.find(c => c.id === payload.new.id)) cobros.push(cobroFromDb(payload.new));
+                    } else if (payload.eventType === 'UPDATE') {
+                        const idx = cobros.findIndex(c => c.id === payload.new.id);
+                        if (idx >= 0) cobros[idx] = cobroFromDb(payload.new); else cobros.push(cobroFromDb(payload.new));
+                    } else if (payload.eventType === 'DELETE') {
+                        cobros = cobros.filter(c => c.id !== payload.old.id);
+                    }
+                    mostrarCobros(); actualizarDashboard(); actualizarCards();
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'ramo_gastos' }, (payload) => {
                     if (payload.eventType === 'INSERT') {
@@ -926,14 +983,13 @@
             const metodo = document.getElementById('venta-metodo').value;
             const factura = document.getElementById('venta-factura').value;
             const facturado = document.getElementById('venta-facturado').checked;
-            const cobrado = document.getElementById('venta-cobrado').checked;
 
             if (!fecha || !cliente || !importe) {
                 alert('Completa fecha, cliente, kilos y precio');
                 return;
             }
 
-            const nuevaVenta = { fecha, cliente, remito, servicio, kilos, precioKilo, importe, metodo, factura, facturado, cobrado, id: Date.now() };
+            const nuevaVenta = { fecha, cliente, remito, servicio, kilos, precioKilo, importe, metodo, factura, facturado, id: Date.now() };
             ventas.push(nuevaVenta);
             sb.from('ramo_ventas').insert(ventaToDb(nuevaVenta)).then(({ error }) => {
                 if (error) { console.error('Error guardando venta:', error); marcarBadge('error', 'Error al guardar'); }
@@ -947,7 +1003,6 @@
             document.getElementById('venta-importe').value = '';
             document.getElementById('venta-factura').value = '';
             document.getElementById('venta-facturado').checked = false;
-            document.getElementById('venta-cobrado').checked = false;
 
             mostrarVentas();
             actualizarDashboard();
@@ -968,7 +1023,6 @@
             document.getElementById('venta-metodo').value = venta.metodo;
             document.getElementById('venta-factura').value = venta.factura;
             document.getElementById('venta-facturado').checked = venta.facturado;
-            document.getElementById('venta-cobrado').checked = venta.cobrado;
 
             ventas = ventas.filter(v => v.id !== id);
             sb.from('ramo_ventas').delete().eq('id', id).then(({ error }) => {
@@ -985,18 +1039,6 @@
                     if (error) { console.error('Error actualizando facturado:', error); marcarBadge('error', 'Error al guardar'); }
                 });
                 mostrarVentas();
-            }
-        }
-
-        function cambiarCobrado(id) {
-            const venta = ventas.find(v => v.id === id);
-            if (venta) {
-                venta.cobrado = !venta.cobrado;
-                sb.from('ramo_ventas').update({ cobrado: venta.cobrado }).eq('id', id).then(({ error }) => {
-                    if (error) { console.error('Error actualizando cobrado:', error); marcarBadge('error', 'Error al guardar'); }
-                });
-                mostrarVentas();
-                actualizarCards();
             }
         }
 
@@ -1031,8 +1073,57 @@
                     <td>${v.metodo}</td>
                     <td>${v.factura}</td>
                     <td class="text-center"><input type="checkbox" ${v.facturado ? 'checked' : ''} onchange="cambiarFacturado(${v.id})" /></td>
-                    <td class="text-center"><input type="checkbox" ${v.cobrado ? 'checked' : ''} onchange="cambiarCobrado(${v.id})" /></td>
                     <td><button class="btn-small" onclick="editarVenta(${v.id})" style="background:#9333ea;">✏️</button> <button class="btn-danger btn-small" onclick="eliminarVenta(${v.id})">✕</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== COBROS ==========
+        function agregarCobro() {
+            const fecha = document.getElementById('cobro-fecha').value;
+            const cliente = document.getElementById('cobro-cliente').value;
+            const metodo = document.getElementById('cobro-metodo').value;
+            const importe = parseFloat(document.getElementById('cobro-importe').value) || 0;
+
+            if (!fecha || !cliente || !importe) {
+                alert('Completa fecha, cliente y monto de cobranza');
+                return;
+            }
+
+            const nuevoCobro = { fecha, cliente, metodo, importe, id: Date.now() };
+            cobros.push(nuevoCobro);
+            sb.from('ramo_cobros').insert(cobroToDb(nuevoCobro)).then(({ error }) => {
+                if (error) { console.error('Error guardando cobro:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            document.getElementById('cobro-fecha').value = '';
+            document.getElementById('cobro-cliente').value = '';
+            document.getElementById('cobro-importe').value = '';
+
+            mostrarCobros();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function eliminarCobro(id) {
+            cobros = cobros.filter(c => c.id !== id);
+            sb.from('ramo_cobros').delete().eq('id', id).then(({ error }) => {
+                if (error) { console.error('Error eliminando cobro:', error); marcarBadge('error', 'Error al guardar'); }
+            });
+            mostrarCobros();
+            actualizarDashboard();
+            actualizarCards();
+        }
+
+        function mostrarCobros() {
+            const tbody = document.getElementById('tbody-cobros');
+            if (!tbody) return;
+            tbody.innerHTML = cobros.map(c => `
+                <tr>
+                    <td>${formatFecha(c.fecha)}</td>
+                    <td>${c.cliente}</td>
+                    <td>${c.metodo}</td>
+                    <td class="text-right">$${formatNum(c.importe)}</td>
+                    <td><button class="btn-danger btn-small" onclick="eliminarCobro(${c.id})">✕</button></td>
                 </tr>
             `).join('');
         }
@@ -1357,10 +1448,13 @@
 
         function calcularIngresosPorSemana(tipo, semana) {
             const indiceMesActual = obtenerIndiceMesActual();
-            if (tipo === 'ventas') {
-                return ventas
-                    .filter(v => v.cobrado && (v.metodo === 'Efectivo' || v.metodo === 'Transferencia') && obtenerIndiceMesDeFecha(v.fecha) === indiceMesActual && calcularSemana(new Date(v.fecha).getDate()) === semana)
-                    .reduce((sum, v) => sum + v.importe, 0);
+            if (tipo === 'cobros') {
+                // Cobros en Efectivo o Transferencia registrados en la pestaña Cobros.
+                // Los cobrados con Cheque no entran acá: esos se cargan y siguen su
+                // propio circuito en la pestaña Cheques (Cobrado / Descontado).
+                return cobros
+                    .filter(c => obtenerIndiceMesDeFecha(c.fecha) === indiceMesActual && calcularSemana(new Date(c.fecha).getDate()) === semana)
+                    .reduce((sum, c) => sum + c.importe, 0);
             }
             if (tipo === 'usd') {
                 return ventasUSD
@@ -1418,17 +1512,17 @@
 
             // Tabla de Ingresos por Semana
             ['s1', 's2', 's3', 's4', 's5'].forEach(sem => {
-                const ingVentas = calcularIngresosPorSemana('ventas', sem);
+                const ingCobros = calcularIngresosPorSemana('cobros', sem);
                 const ingUSD = calcularIngresosPorSemana('usd', sem);
                 const ingCheques = calcularIngresosPorSemana('cheques', sem);
-                const total = ingVentas + ingUSD + ingCheques;
+                const total = ingCobros + ingUSD + ingCheques;
 
-                const elem1 = document.getElementById(`ing-ventas-${sem}`);
+                const elem1 = document.getElementById(`ing-cobros-${sem}`);
                 const elem2 = document.getElementById(`ing-usd-${sem}`);
                 const elem3 = document.getElementById(`ing-cheq-${sem}`);
                 const elem4 = document.getElementById(`ing-total-${sem}`);
-                
-                if (elem1) elem1.textContent = formatNum(ingVentas);
+
+                if (elem1) elem1.textContent = formatNum(ingCobros);
                 if (elem2) elem2.textContent = formatNum(ingUSD);
                 if (elem3) elem3.textContent = formatNum(ingCheques);
                 if (elem4) elem4.textContent = formatNum(total);
@@ -1544,11 +1638,11 @@
             // ===== CARDS DE ARRIBA (Cash Flow) =====
             const indiceMesActualCards = obtenerIndiceMesActual();
 
-            // Ingresos del mes = ventas en efectivo/transferencia cobradas + cheques
+            // Ingresos del mes = cobros en efectivo/transferencia + cheques
             // cobrados/descontados + venta de dólares, todo contado en el mes elegido.
             const totalIngresos = ['s1', 's2', 's3', 's4', 's5'].reduce((sum, sem) => {
                 return sum
-                    + calcularIngresosPorSemana('ventas', sem)
+                    + calcularIngresosPorSemana('cobros', sem)
                     + calcularIngresosPorSemana('usd', sem)
                     + calcularIngresosPorSemana('cheques', sem);
             }, 0);
@@ -1611,10 +1705,10 @@
                 }
 
                 // ===== INGRESOS =====
-                const ingVentas = calcularIngresosPorSemana('ventas', sem);
+                const ingCobros = calcularIngresosPorSemana('cobros', sem);
                 const ingUSD = calcularIngresosPorSemana('usd', sem);
                 const ingCheques = calcularIngresosPorSemana('cheques', sem);
-                const totalIngresos = ingVentas + ingUSD + ingCheques;
+                const totalIngresos = ingCobros + ingUSD + ingCheques;
 
                 // ===== GASTOS =====
                 let totalGastos = 0;
