@@ -1633,7 +1633,7 @@
             if (tabla_variables) tabla_variables.innerHTML = htmlVariables;
 
             // ===== FLUJO DE CAJA =====
-            actualizarFlujoCaja();
+            const { saldosFinales, saldosUSDFinales } = actualizarFlujoCaja();
 
             // ===== CARDS DE ARRIBA (Cash Flow) =====
             const indiceMesActualCards = obtenerIndiceMesActual();
@@ -1658,21 +1658,22 @@
             if (elem_cf_ingresos) elem_cf_ingresos.textContent = `$${formatNum(totalIngresos)}`;
             if (elem_cf_gastos) elem_cf_gastos.textContent = `$${formatNum(totalGastosReales)}`;
 
-            const saldoFinS5Elem = document.getElementById('fc-saldo-fin-s5');
-            if (saldoFinS5Elem) {
-                const saldoFinS5 = parseFloat(saldoFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0;
+            // Saldo de caja = saldo final ARS de la semana 5 (ya incluye todos los
+            // ingresos del mes menos los gastos reales) + saldo final en USD de la
+            // semana 5 convertido al último tipo de cambio cargado. Se toman los
+            // valores numéricos calculados en actualizarFlujoCaja() directamente
+            // (no del texto ya formateado en pantalla, que usa "." como separador
+            // de miles y rompía el cálculo al volver a parsearlo).
+            const saldoFinS5 = saldosFinales['s5'] || 0;
+            const saldoUSDFinS5 = saldosUSDFinales['s5'] || 0;
 
-                let ultimoTipoCambio = 1200;
-                if (ventasUSD.length > 0) {
-                    ultimoTipoCambio = ventasUSD[ventasUSD.length - 1].tipoCambio;
-                }
-
-                const saldoUSDFinS5Elem = document.getElementById('saldo_usd_s5');
-                const saldoUSDFinS5 = saldoUSDFinS5Elem ? parseFloat(saldoUSDFinS5Elem.textContent.replace(/[^\d.-]/g, '')) || 0 : 0;
-                const saldoCaja = saldoFinS5 + (saldoUSDFinS5 * ultimoTipoCambio);
-
-                if (elem_cf_saldo) elem_cf_saldo.textContent = `$${formatNum(saldoCaja)}`;
+            let ultimoTipoCambio = 1200;
+            if (ventasUSD.length > 0) {
+                ultimoTipoCambio = ventasUSD[ventasUSD.length - 1].tipoCambio;
             }
+
+            const saldoCaja = saldoFinS5 + (saldoUSDFinS5 * ultimoTipoCambio);
+            if (elem_cf_saldo) elem_cf_saldo.textContent = `$${formatNum(saldoCaja)}`;
 
             // ===== DASHBOARD =====
             actualizarDashboard();
@@ -1755,6 +1756,8 @@
                     if (elem_usd) elem_usd.textContent = formatNum(saldoInicialUSD);
                 }
             });
+
+            return { saldosFinales, saldosUSDFinales };
         }
 
         function obtenerSemanaDeFecha(fecha) {
