@@ -1272,6 +1272,20 @@
             }
         }
 
+        // Día del mes leído directo del string 'AAAA-MM-DD' o 'DD/MM/AAAA', sin
+        // pasar por new Date(...).getDate(). new Date('2026-09-01') se interpreta
+        // como medianoche UTC, y en un huso horario como el de Argentina (UTC-3)
+        // .getDate() devuelve el día anterior (31/08 en vez de 01/09) — eso hacía
+        // que gastos/cobros/cheques del día 1 cayeran en la semana S5 en vez de S1.
+        function obtenerDiaDeFecha(fechaStr) {
+            if (!fechaStr) return 0;
+            if (fechaStr.includes('-')) {
+                return parseInt(fechaStr.split('-')[2]);
+            } else {
+                return parseInt(fechaStr.split('/')[0]);
+            }
+        }
+
         // Índice comparable año+mes (ej: 2026-09 -> 24321) para poder
         // ordenar/comparar fechas de distintos años sin ambigüedad.
         function obtenerIndiceMes(anio, mes) {
@@ -1442,7 +1456,7 @@
         function calcularRealPorSemana(cat, semana) {
             const indiceMesActual = obtenerIndiceMesActual();
             return gastos
-                .filter(g => g.cat === cat && obtenerIndiceMesDeFecha(g.fecha) === indiceMesActual && calcularSemana(new Date(g.fecha).getDate()) === semana)
+                .filter(g => g.cat === cat && obtenerIndiceMesDeFecha(g.fecha) === indiceMesActual && calcularSemana(obtenerDiaDeFecha(g.fecha)) === semana)
                 .reduce((sum, g) => sum + g.importe, 0);
         }
 
@@ -1453,19 +1467,19 @@
                 // Los cobrados con Cheque no entran acá: esos se cargan y siguen su
                 // propio circuito en la pestaña Cheques (Cobrado / Descontado).
                 return cobros
-                    .filter(c => obtenerIndiceMesDeFecha(c.fecha) === indiceMesActual && calcularSemana(new Date(c.fecha).getDate()) === semana)
+                    .filter(c => obtenerIndiceMesDeFecha(c.fecha) === indiceMesActual && calcularSemana(obtenerDiaDeFecha(c.fecha)) === semana)
                     .reduce((sum, c) => sum + c.importe, 0);
             }
             if (tipo === 'usd') {
                 return ventasUSD
-                    .filter(v => v.tipo === 'Venta' && obtenerIndiceMesDeFecha(v.fecha) === indiceMesActual && calcularSemana(new Date(v.fecha).getDate()) === semana)
+                    .filter(v => v.tipo === 'Venta' && obtenerIndiceMesDeFecha(v.fecha) === indiceMesActual && calcularSemana(obtenerDiaDeFecha(v.fecha)) === semana)
                     .reduce((sum, v) => sum + v.total, 0);
             }
             if (tipo === 'cheques') {
                 // Cheques Cobrados directamente (sin descuento): ingresa el importe
                 // completo del cheque, contado en el mes en que se cobraron.
                 const ingCobrados = cheques
-                    .filter(c => c.estado === 'Cobrado' && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(new Date(c.fechaCobrado).getDate()) === semana)
+                    .filter(c => c.estado === 'Cobrado' && c.fechaCobrado && obtenerIndiceMesDeFecha(c.fechaCobrado) === indiceMesActual && calcularSemana(obtenerDiaDeFecha(c.fechaCobrado)) === semana)
                     .reduce((sum, c) => sum + c.importe, 0);
 
                 // Cheques Descontados: NO ingresa el importe del cheque (eso nunca
@@ -1475,7 +1489,7 @@
                 // Cartera; para que sume en Ingresos hay que cargar también el
                 // descuento (o el lote de descuentos) en la pestaña Descuentos.
                 const ingDescuentos = descuentos
-                    .filter(d => d.fechaDesc && obtenerIndiceMesDeFecha(d.fechaDesc) === indiceMesActual && calcularSemana(new Date(d.fechaDesc).getDate()) === semana)
+                    .filter(d => d.fechaDesc && obtenerIndiceMesDeFecha(d.fechaDesc) === indiceMesActual && calcularSemana(obtenerDiaDeFecha(d.fechaDesc)) === semana)
                     .reduce((sum, d) => sum + d.neto, 0);
 
                 return ingCobrados + ingDescuentos;
@@ -1491,8 +1505,7 @@
             const mesosResultado = {};
             
             chequesCartera.forEach(c => {
-                const fechaVencimiento = new Date(c.vencimiento);
-                const mesVencimiento = fechaVencimiento.getMonth() + 1;
+                const mesVencimiento = obtenerMesDeFecha(c.vencimiento);
                 const nombreMes = Object.keys(mesosMap).find(mes => mesosMap[mes] === mesVencimiento) || `Mes ${mesVencimiento}`;
                 mesosResultado[nombreMes] = (mesosResultado[nombreMes] || 0) + c.importe;
             });
@@ -1724,8 +1737,7 @@
                 // ===== SALDO FINAL USD =====
                 let saldoFinalUSD = saldoInicialUSD;
                 ventasUSD.forEach(v => {
-                    const fechaMov = new Date(v.fecha);
-                    const semanaMov = obtenerSemanaDeFecha(fechaMov);
+                    const semanaMov = calcularSemana(obtenerDiaDeFecha(v.fecha));
                     if (semanaMov === sem) {
                         if (v.tipo === 'Compra') {
                             saldoFinalUSD += v.cantidad;
@@ -1758,15 +1770,6 @@
             });
 
             return { saldosFinales, saldosUSDFinales };
-        }
-
-        function obtenerSemanaDeFecha(fecha) {
-            const dia = fecha.getDate();
-            if (dia <= 4) return 's1';
-            if (dia <= 11) return 's2';
-            if (dia <= 18) return 's3';
-            if (dia <= 25) return 's4';
-            return 's5';
         }
 
         function actualizarProyectado(cat, sem, valor) {
